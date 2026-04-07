@@ -1,0 +1,20 @@
+workflows:
+  android-workflow:
+    name: Android Build
+    environment:
+      groups:
+        - firebase_credentials
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Decode Firebase config
+        script: |
+          echo $FIREBASE_OPTIONS_BASE64 | base64 --decode > lib/firebase_options.dart
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Build Android APK
+        script: |
+          flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
