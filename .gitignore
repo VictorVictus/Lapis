@@ -1,0 +1,68 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+pubspec.lock
+build/
+*.lock
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter generated
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-version
+
+# Android
+android/local.properties
+android/app/google-services.json
+android/app/src/main/res/values/google_maps_api_key.xml
+android/key.properties
+
+# iOS
+ios/Pods/
+ios/Podfile.lock
+ios/Flutter/Generated.xcconfig
+ios/Runner/GoogleService-Info.plist
+ios/Runner/Generated.xcconfig
+
+# Web
+web/index.html
+
+# Firebase / Secrets
+lib/firebase_options.dart
+lib/firebase_options_*.dart
+*.env
+.env.*
+*keys.dart
+*secret*.dart
+*api_config.dart
+secrets/
+credentials/
+*.pem
+*.key
+*.p8
+
+# Authentication (safe to commit, but excluding if contains test creds)
+# lib/services/auth_service.dart  ← Remove # if you want to exclude it
+
+# macOS
+.DS_Store
+macos/Flutter/Generated.xcconfig
+
+# Windows
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+
+# Linux
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+
+# VS Code / IDE
+.vscode/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
