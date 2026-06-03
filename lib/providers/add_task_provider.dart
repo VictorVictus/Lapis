@@ -21,6 +21,9 @@ class AddTaskState {
   final bool hasDeadline;
   final DateTime? deadline;
   final bool isSaving;
+  final Task? existingTask;
+
+  bool get isEditing => existingTask != null;
 
   AddTaskState({
     this.title = '',
@@ -36,6 +39,7 @@ class AddTaskState {
     this.hasDeadline = false,
     this.deadline,
     this.isSaving = false,
+    this.existingTask,
   });
 
   AddTaskState copyWith({
@@ -52,6 +56,7 @@ class AddTaskState {
     bool? hasDeadline,
     DateTime? deadline,
     bool? isSaving,
+    Task? existingTask,
   }) {
     return AddTaskState(
       title: title ?? this.title,
@@ -67,6 +72,7 @@ class AddTaskState {
       hasDeadline: hasDeadline ?? this.hasDeadline,
       deadline: deadline ?? this.deadline,
       isSaving: isSaving ?? this.isSaving,
+      existingTask: existingTask ?? this.existingTask,
     );
   }
 }
@@ -75,6 +81,26 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
   @override
   AddTaskState build() {
     return AddTaskState(scheduledAt: DateTime.now());
+  }
+
+  void initForEdit(Task task) {
+    final config = task.recurrentConfig;
+    final isCustom = config?.frequency == RecurrentFrequency.custom;
+    state = AddTaskState(
+      title: task.title,
+      notes: task.notes ?? '',
+      priorityIndex: task.priority.index,
+      selectedCategory: task.category,
+      scheduledAt: task.scheduledAt ?? DateTime.now(),
+      isRecurrent: task.type == TaskType.recurrent,
+      recurrentFrequency: config?.frequency ?? RecurrentFrequency.daily,
+      selectedWeekdays: config?.weekdays?.toSet() ?? {},
+      customInterval: isCustom ? (config?.interval ?? 1) : 1,
+      customUnit: isCustom ? (config?.frequency ?? RecurrentFrequency.daily) : RecurrentFrequency.daily,
+      hasDeadline: task.deadline != null,
+      deadline: task.deadline,
+      existingTask: task,
+    );
   }
 
   void updateTitle(String title) => state = state.copyWith(title: title);
@@ -98,15 +124,16 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
 
   Future<bool> saveTask() async {
     if (state.title.trim().isEmpty) return false;
-    
+
+    final category = state.selectedCategory;
+    if (category == null) return false;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
 
     state = state.copyWith(isSaving: true);
 
     try {
-      final taskId = FirebaseFirestore.instance.collection('tasks').doc().id;
-      
       RecurrentConfig? recurrentConfig;
       if (state.isRecurrent) {
         int interval = 1;
@@ -126,13 +153,19 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
         );
       }
 
-      final newTask = Task(
+      final existing = state.existingTask;
+      final taskId = existing?.id ?? FirebaseFirestore.instance.collection('tasks').doc().id;
+
+      final taskOrder = existing?.order ?? DateTime.now().millisecondsSinceEpoch.toDouble();
+
+      final task = Task(
         id: taskId,
         userId: user.uid,
         title: state.title.trim(),
-        category: state.selectedCategory!, // Assuming category is always selected
-        createdAt: DateTime.now(),
-        status: TaskStatus.undone,
+        category: category,
+        order: taskOrder,
+        createdAt: existing?.createdAt ?? DateTime.now(),
+        status: existing?.status ?? TaskStatus.undone,
         type: state.isRecurrent ? TaskType.recurrent : TaskType.oneTime,
         priority: TaskPriority.values[state.priorityIndex],
         scheduledAt: state.scheduledAt,
@@ -141,7 +174,11 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
         notes: state.notes.trim().isEmpty ? null : state.notes.trim(),
       );
 
-      await ref.read(taskServiceProvider).createTask(newTask);
+      if (existing != null) {
+        await ref.read(taskServiceProvider).updateTask(task);
+      } else {
+        await ref.read(taskServiceProvider).createTask(task);
+      }
       return true;
     } catch (e) {
       debugPrint('Error saving task in provider: $e');

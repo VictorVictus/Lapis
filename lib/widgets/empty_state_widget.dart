@@ -7,8 +7,6 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -16,32 +14,32 @@ class EmptyStateWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: const Icon(
               CupertinoIcons.checkmark_seal_fill,
               size: 100,
-              color: isDark ? Colors.white70 : Colors.white70,
+              color: Colors.white70,
             ),
           ),
           const SizedBox(height: 30),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white54 : Colors.white30,
+              color: Colors.white54,
               letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 10),
-          Text(
+          const Text(
             "Relax, everything is under control.",
             style: TextStyle(
               fontSize: 14,
-              color: isDark ? Colors.white30 : Colors.white30,
+              color: Colors.white30,
             ),
           ),
         ],

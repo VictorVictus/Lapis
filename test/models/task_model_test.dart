@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:to_do_app/models/task.dart';
-import 'package:to_do_app/models/subclasses/taskcategory.dart';
+import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -9,7 +9,7 @@ void main() {
     final testCategory = TaskCategory(
       id: 'cat1',
       name: 'Work',
-      color: Colors.blue.value,
+      color: Colors.blue.toARGB32(),
     );
 
     final testDate = DateTime(2026, 4, 6, 12, 0);

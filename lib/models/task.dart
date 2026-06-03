@@ -12,7 +12,6 @@ class Task {
   final String id;
   final String userId; // Correct: tracking who created this
   String title;
-  String? description;
   TaskStatus status;
   TaskType type;
   TaskPriority priority;
@@ -23,6 +22,10 @@ class Task {
   String? notes;
   final DateTime createdAt;
   DateTime? completedAt;
+  DateTime? archivedAt;
+  bool isArchived;
+  bool pinned;
+  double order;
 
   Task({
     required this.id,
@@ -30,7 +33,7 @@ class Task {
     required this.title,
     required this.category,
     required this.createdAt,
-    this.description,
+    this.order = 0,
     this.status = TaskStatus.undone,
     this.type = TaskType.oneTime,
     this.priority = TaskPriority.none,
@@ -39,34 +42,45 @@ class Task {
     this.recurrentConfig,
     this.notes,
     this.completedAt,
+    this.archivedAt,
+    this.isArchived = false,
+    this.pinned = false,
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String id) {
+    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
+      if (raw is! int) return defaultIndex;
+      if (raw < 0 || raw >= values.length) return defaultIndex;
+      return raw;
+    }
+
+    TaskCategory safeCategory(dynamic raw) {
+      if (raw is Map<String, dynamic>) {
+        return TaskCategory.fromMap(raw);
+      }
+      return TaskCategory(id: 'unknown', name: 'General', color: 0xFF9E9E9E);
+    }
+
     return Task(
       id: id,
-      userId: map['userId'] ?? '',
-      title: map['title'] ?? '',
-      description: map['description'],
-      status: TaskStatus.values[map['status'] ?? 0],
-      type: TaskType.values[map['type'] ?? 0],
-      priority: TaskPriority.values[map['priority'] ?? 0],
-      category: TaskCategory.fromMap(map['category']),
-      scheduledAt: map['scheduledAt'] != null
-          ? (map['scheduledAt'] as Timestamp).toDate()
+      userId: map['userId'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      status: TaskStatus.values[safeIndex(TaskStatus.values, map['status'], 0)],
+      type: TaskType.values[safeIndex(TaskType.values, map['type'], 0)],
+      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      category: safeCategory(map['category']),
+      scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
+      deadline: (map['deadline'] as Timestamp?)?.toDate(),
+      recurrentConfig: map['recurrentConfig'] is Map
+          ? RecurrentConfig.fromMap(map['recurrentConfig'] as Map<String, dynamic>)
           : null,
-      deadline: map['deadline'] != null
-          ? (map['deadline'] as Timestamp).toDate()
-          : null,
-      recurrentConfig: map['recurrentConfig'] != null
-          ? RecurrentConfig.fromMap(map['recurrentConfig'])
-          : null,
-      notes: map['notes'],
-      createdAt: map['createdAt'] != null
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      completedAt: map['completedAt'] != null
-          ? (map['completedAt'] as Timestamp).toDate()
-          : null,
+      notes: map['notes'] as String?,
+      order: (map['order'] as num?)?.toDouble() ?? 0,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+      archivedAt: (map['archivedAt'] as Timestamp?)?.toDate(),
+      isArchived: map['isArchived'] as bool? ?? false,
+      pinned: map['pinned'] as bool? ?? false,
     );
   }
 
@@ -74,7 +88,6 @@ class Task {
     return {
       'userId': userId,
       'title': title,
-      'description': description,
       'status': status.index,
       'type': type.index,
       'priority': priority.index,
@@ -83,14 +96,17 @@ class Task {
       'deadline': deadline,
       'recurrentConfig': recurrentConfig?.toMap(),
       'notes': notes,
+      'order': order,
       'createdAt': createdAt,
       'completedAt': completedAt,
+      'archivedAt': archivedAt,
+      'isArchived': isArchived,
+      'pinned': pinned,
     };
   }
 
   Task copyWith({
     String? title,
-    String? description,
     TaskStatus? status,
     TaskType? type,
     TaskPriority? priority,
@@ -100,12 +116,15 @@ class Task {
     RecurrentConfig? recurrentConfig,
     String? notes,
     DateTime? completedAt,
+    DateTime? archivedAt,
+    bool? isArchived,
+    bool? pinned,
+    double? order,
   }) {
     return Task(
       id: id,
       userId: userId,
       title: title ?? this.title,
-      description: description ?? this.description,
       status: status ?? this.status,
       type: type ?? this.type,
       priority: priority ?? this.priority,
@@ -116,6 +135,10 @@ class Task {
       notes: notes ?? this.notes,
       createdAt: createdAt,
       completedAt: completedAt ?? this.completedAt,
+      archivedAt: archivedAt ?? this.archivedAt,
+      isArchived: isArchived ?? this.isArchived,
+      pinned: pinned ?? this.pinned,
+      order: order ?? this.order,
     );
   }
 }

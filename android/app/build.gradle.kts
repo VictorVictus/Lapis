@@ -1,24 +1,37 @@
-import com.android.build.gradle.internal.dsl.BaseAppModuleExtension
+import java.util.Properties
 
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
+// CI / store builds must not silently fall back to the debug keystore.
+val isCiBuild = System.getenv("CI") == "true"
+    || System.getenv("CM_BUILD_ID") != null
+    || System.getenv("REQUIRE_RELEASE_KEYSTORE") == "true"
+
 android {
-    namespace = "com.example.todoist" // Add this line here
+    namespace = "app.lapis.todo"
     compileSdk = 36
 
     compileOptions {
-        // This is the correct Kotlin DSL syntax
-        this.isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
-        applicationId = "com.example.todoist"
+        applicationId = "app.lapis.todo"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = 1
@@ -26,12 +39,49 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
+            // Flutter obfuscation — run with:
+            //   flutter build apk --obfuscate --split-debug-info=build/debug-info
+            // or set the flags below if using the gradle plugin directly.
+            // dartObfuscation = true
+            // splitDebugInfo = file("build/debug-info")
+
+            signingConfig = when {
+                keystorePropertiesFile.exists() -> signingConfigs.getByName("release")
+                isCiBuild -> throw GradleException(
+                    "Release build requires android/key.properties with a upload keystore. " +
+                        "See android/key.properties.example.",
+                )
+                else -> {
+                    logger.warn(
+                        "Release build is using the debug keystore. " +
+                            "Configure android/key.properties before Play Store upload.",
+                    )
+                    signingConfigs.getByName("debug")
+                }
+            }
         }
     }
 }

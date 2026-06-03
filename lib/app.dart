@@ -1,45 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:to_do_app/screens/auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_app/providers/accent_color_provider.dart';
+import 'package:to_do_app/providers/theme_provider.dart';
+import 'package:to_do_app/providers/smart_filters_provider.dart';
+import 'package:to_do_app/screens/auth_gate.dart';
+import 'package:to_do_app/theme/app_theme.dart';
 
-class App extends StatelessWidget {
-  // No fa falta stateful pq no canviara res aqui
-  const App({Key? key})
-    : super(
-        key: key,
-      ); // Constructor que assigna el valor de 'key' com a key d'aquest widget i aixi flutter l'identifica
+class App extends ConsumerStatefulWidget {
+  const App({super.key});
 
-  @override // Sobrescrivim el metode build del Flutter amb el nostre
+  @override
+  ConsumerState<App> createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> {
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      ref.read(themeModeProvider.notifier).loadSavedTheme();
+      ref.read(accentColorProvider.notifier).loadSavedAccent();
+      ref.read(smartFiltersProvider.notifier).loadSaved();
+      _loaded = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+    final accentColor = ref.watch(accentColorProvider);
     return MaterialApp(
       title: 'To-Do App',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primaryColor: const Color.fromARGB(255, 21, 87, 141),
-        scaffoldBackgroundColor: Colors.white,
-        cupertinoOverrideTheme: CupertinoThemeData(brightness: Brightness.light),
-        colorScheme: const ColorScheme.light(
-          primary: Color.fromARGB(255, 21, 87, 141),
-          secondary: Color.fromARGB(255, 25, 135, 226),
-          surface: Colors.white,
-          onSurface: Colors.black,
-        ),
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF0C2B4B),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cupertinoOverrideTheme: CupertinoThemeData(brightness: Brightness.dark),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0C2B4B), 
-          secondary: Color(0xFF13508A),
-          surface: Color(0xFF222831), // Deep slate grey instead of pure black for components
-          onSurface: Colors.white,
-        ),
-      ),
-      home: const Auth(),
+      themeMode: themeMode,
+      theme: AppTheme.lightTheme(seed: accentColor),
+      darkTheme: AppTheme.darkTheme(seed: accentColor),
+      home: const AuthGate(),
     );
   }
 }

@@ -1,79 +1,126 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
-import 'package:to_do_app/services/user_service.dart';
 
-class DashboardTabIndex extends Notifier<int> {
-  @override
-  int build() => 0;
-  
-  void setIndex(int index) {
-    state = index;
+enum ViewMode { list, kanban }
+
+enum GroupBy { none, category, priority }
+
+enum SortBy { order, deadline, priority, created }
+
+enum SmartFilter { all, today, thisWeek, overdue, highPriority, hasDeadline, noDeadline, thisMonth, recurring }
+
+class DashboardState {
+  final int tabIndex;
+  final String searchQuery;
+  final int celebrationTrigger;
+  final ViewMode viewMode;
+  final GroupBy groupBy;
+  final SortBy sortBy;
+  final SmartFilter smartFilter;
+  final bool selectionMode;
+  final Set<String> selectedTaskIds;
+
+  DashboardState({
+    this.tabIndex = 0,
+    this.searchQuery = '',
+    this.celebrationTrigger = 0,
+    this.viewMode = ViewMode.list,
+    this.groupBy = GroupBy.none,
+    this.sortBy = SortBy.order,
+    this.smartFilter = SmartFilter.all,
+    this.selectionMode = false,
+    this.selectedTaskIds = const {},
+  });
+
+  DashboardState copyWith({
+    int? tabIndex,
+    String? searchQuery,
+    int? celebrationTrigger,
+    ViewMode? viewMode,
+    GroupBy? groupBy,
+    SortBy? sortBy,
+    SmartFilter? smartFilter,
+    bool? selectionMode,
+    Set<String>? selectedTaskIds,
+  }) {
+    return DashboardState(
+      tabIndex: tabIndex ?? this.tabIndex,
+      searchQuery: searchQuery ?? this.searchQuery,
+      celebrationTrigger: celebrationTrigger ?? this.celebrationTrigger,
+      viewMode: viewMode ?? this.viewMode,
+      groupBy: groupBy ?? this.groupBy,
+      sortBy: sortBy ?? this.sortBy,
+      smartFilter: smartFilter ?? this.smartFilter,
+      selectionMode: selectionMode ?? this.selectionMode,
+      selectedTaskIds: selectedTaskIds ?? this.selectedTaskIds,
+    );
   }
 }
 
-final dashboardTabIndexProvider = NotifierProvider<DashboardTabIndex, int>(DashboardTabIndex.new);
-
-class IsUploading extends Notifier<bool> {
-  @override
-  bool build() => false;
-  
-  void setStatus(bool status) {
-    state = status;
-  }
-}
-
-final isUploadingProfilePicProvider = NotifierProvider<IsUploading, bool>(IsUploading.new);
-
-class SearchQuery extends Notifier<String> {
-  @override
-  String build() => '';
-  
-  void setQuery(String query) {
-    state = query;
-  }
-}
-
-final searchQueryProvider = NotifierProvider<SearchQuery, String>(SearchQuery.new);
-
-class DashboardController extends Notifier<void> {
+class DashboardNotifier extends Notifier<DashboardState> {
   Timer? _debounceTimer;
 
   @override
-  void build() {
+  DashboardState build() {
     ref.onDispose(() => _debounceTimer?.cancel());
+    return DashboardState();
+  }
+
+  void setTabIndex(int index) {
+    state = state.copyWith(tabIndex: index);
   }
 
   void onSearchChanged(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      ref.read(searchQueryProvider.notifier).setQuery(query);
+      state = state.copyWith(searchQuery: query);
     });
   }
 
-  Future<void> pickAndUploadImage(String userId) async {
-    ref.read(isUploadingProfilePicProvider.notifier).setStatus(true);
-    try {
-      await ref.read(userServiceProvider).pickAndUploadImage(userId);
-    } catch (e) {
-      // Errors would typically be piped through an error provider
-      throw e;
-    } finally {
-      ref.read(isUploadingProfilePicProvider.notifier).setStatus(false);
+  void triggerCelebration() {
+    state = state.copyWith(celebrationTrigger: state.celebrationTrigger + 1);
+  }
+
+  void toggleViewMode() {
+    state = state.copyWith(
+      viewMode: state.viewMode == ViewMode.list ? ViewMode.kanban : ViewMode.list,
+    );
+  }
+
+  void setGroupBy(GroupBy groupBy) {
+    state = state.copyWith(groupBy: groupBy);
+  }
+
+  void setSmartFilter(SmartFilter filter) {
+    state = state.copyWith(smartFilter: filter);
+  }
+
+  void setSortBy(SortBy sortBy) {
+    state = state.copyWith(sortBy: sortBy);
+  }
+
+  void toggleSelectionMode() {
+    final next = !state.selectionMode;
+    state = state.copyWith(selectionMode: next, selectedTaskIds: next ? state.selectedTaskIds : {});
+  }
+
+  void toggleTaskSelection(String taskId) {
+    final ids = Set<String>.from(state.selectedTaskIds);
+    if (ids.contains(taskId)) {
+      ids.remove(taskId);
+    } else {
+      ids.add(taskId);
     }
+    state = state.copyWith(selectedTaskIds: ids);
+  }
+
+  void selectAll(List<String> taskIds) {
+    state = state.copyWith(selectedTaskIds: Set.from(taskIds));
+  }
+
+  void clearSelection() {
+    state = state.copyWith(selectionMode: false, selectedTaskIds: {});
   }
 }
 
-class Celebration extends Notifier<int> {
-  @override
-  int build() => 0;
-  
-  void trigger() {
-    state++;
-  }
-}
-
-final celebrationProvider = NotifierProvider<Celebration, int>(Celebration.new);
-
-final dashboardControllerProvider = NotifierProvider<DashboardController, void>(DashboardController.new);
-
-
+final dashboardProvider = NotifierProvider<DashboardNotifier, DashboardState>(DashboardNotifier.new);

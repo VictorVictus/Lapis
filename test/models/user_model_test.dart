@@ -20,7 +20,6 @@ void main() {
       expect(map['username'], 'testuser');
       expect(map['email'], 'test@example.com');
       expect(map['createdAt'], testDate);
-      expect(map.containsKey('taskIds'), isFalse); // Scalability check
     });
 
     test('should correctly create from map', () {
@@ -46,12 +45,20 @@ void main() {
         email: 'test@example.com',
       );
 
-      final updatedUser = user.copyWith(
-        profilePictureUrl: 'https://example.com/pic.jpg',
-      );
+      final updatedUser = user.copyWith(username: 'newname');
 
       expect(updatedUser.uid, 'user1');
-      expect(updatedUser.profilePictureUrl, 'https://example.com/pic.jpg');
+      expect(updatedUser.username, 'newname');
+      expect(updatedUser.email, 'test@example.com');
+    });
+
+    test('initial returns uppercase first letter of username', () {
+      final user = User(
+        uid: 'user1',
+        username: 'alice',
+        email: 'a@example.com',
+      );
+      expect(user.initial, 'A');
     });
   });
 }

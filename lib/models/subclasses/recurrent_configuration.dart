@@ -8,12 +8,14 @@ class RecurrentConfig {
   RecurrentConfig({required this.frequency, this.interval = 1, this.weekdays});
 
   factory RecurrentConfig.fromMap(Map<String, dynamic> map) {
+    final freqRaw = map['frequency'];
+    final freq = freqRaw is int && freqRaw >= 0 && freqRaw < RecurrentFrequency.values.length
+        ? RecurrentFrequency.values[freqRaw]
+        : RecurrentFrequency.daily;
     return RecurrentConfig(
-      frequency: RecurrentFrequency.values[map['frequency'] ?? 0],
-      interval: map['interval'] ?? 1,
-      weekdays: map['weekdays'] != null
-          ? List<int>.from(map['weekdays'])
-          : null,
+      frequency: freq,
+      interval: (map['interval'] as num?)?.toInt() ?? 1,
+      weekdays: map['weekdays'] is List ? List<int>.from(map['weekdays'] as List) : null,
     );
   }
 

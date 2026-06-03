@@ -3,15 +3,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
 
-class TaskTitleInput extends ConsumerWidget {
+class TaskTitleInput extends ConsumerStatefulWidget {
   const TaskTitleInput({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final title = ref.watch(addTaskProvider.select((s) => s.title));
+  ConsumerState<TaskTitleInput> createState() => _TaskTitleInputState();
+}
 
+class _TaskTitleInputState extends ConsumerState<TaskTitleInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final title = ref.read(addTaskProvider.select((s) => s.title));
+    _controller = TextEditingController(text: title);
+    _controller.addListener(() {
+      ref.read(addTaskProvider.notifier).updateTitle(_controller.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return TextField(
-      onChanged: (value) => ref.read(addTaskProvider.notifier).updateTitle(value),
+      controller: _controller,
       decoration: const InputDecoration(
         border: InputBorder.none,
         enabledBorder: UnderlineInputBorder(
@@ -24,7 +45,6 @@ class TaskTitleInput extends ConsumerWidget {
         hintStyle: TextStyle(color: CupertinoColors.lightBackgroundGray),
       ),
       style: const TextStyle(fontSize: 24, color: Colors.white),
-      controller: TextEditingController(text: title)..selection = TextSelection.fromPosition(TextPosition(offset: title.length)),
     );
   }
 }

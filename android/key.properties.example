@@ -1,0 +1,12 @@
+# Copy to android/key.properties and fill in before Play Store / CI release builds.
+#
+# Generate a keystore:
+#   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
+#     -keysize 2048 -validity 10000 -alias upload
+#
+# Codemagic: map these to CM_KEYSTORE, CM_KEYSTORE_PASSWORD,
+# CM_KEY_PASSWORD, CM_KEY_ALIAS (see codemagic.yaml).
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=upload
+storeFile=../upload-keystore.jks

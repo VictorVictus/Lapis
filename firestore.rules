@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidTask() {
+      return request.resource.data.keys().hasAll(['userId', 'title', 'status', 'type', 'priority', 'createdAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.status is number
+        && request.resource.data.type is number
+        && request.resource.data.priority is number
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    function isValidCategory() {
+      return request.resource.data.keys().hasAll(['id', 'name', 'color', 'userId'])
+        && request.resource.data.id is string
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.color is number
+        && request.resource.data.userId is string;
+    }
+
+    function isValidUser() {
+      return request.resource.data.keys().hasAll(['uid', 'username', 'email'])
+        && request.resource.data.uid is string
+        && request.resource.data.username is string
+        && request.resource.data.email is string
+        && (request.resource.data.createdAt is timestamp
+         || request.resource.data.createdAt == null); // Allow server timestamps
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser();
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && isValidTask();
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && isValidTask();
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && isValidCategory();
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && isValidCategory();
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /subtasks/{subtaskId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+  }
+}

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
-import 'package:to_do_app/services/TaskService.dart';
+import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 

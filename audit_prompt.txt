@@ -1,0 +1,33 @@
+You are an elite senior mobile developer, cybersecurity auditor, and mobile compliance expert. 
+
+I want you to run a deep, comprehensive structural, security, and architectural audit on this Flutter codebase. Because you have tool access through OpenCode, please actively use your tools to inspect my `pubspec.yaml`, native configuration files, and core source code files under the `lib/` directory. Do not summarize from memory; look at the real files.
+
+Please structure your audit into the following five core sections:
+
+### 1. Cybersecurity & Vulnerability Analysis
+- Scan the codebase for any hardcoded API keys, secrets, private endpoints, or sensitive configuration strings.
+- Inspect local data persistence: look for insecure handling of sensitive data (e.g., storing auth tokens or PII in standard shared_preferences instead of encrypted alternatives like flutter_secure_storage).
+- Check native configurations: Look at `android/app/src/main/AndroidManifest.xml` and `ios/Runner/Info.plist` for misconfigurations (e.g., cleartext network traffic permitted, insecure deep links, or excessive permission requests).
+- Evaluate code protection: Check if the app is structurally prepared for standard Flutter obfuscation flags (--obfuscate) and look for reverse-engineering vectors.
+
+### 2. Legal & Google Play Store Compliance (EU GDPR & Global)
+- Data Mapping: Identify where Personal Identifiable Information (PII) or device identifiers are collected, stored, or transmitted to external backends/analytics.
+- GDPR Alignment: Check if the application contains proper architecture for user consent gating before initializing tracking, ad, or telemetry SDKs. Is there an interface pattern or logic for data deletion/access requests?
+- Google Play Data Safety: Based on the network clients and dependencies you find, list exactly what data collection and encryption declarations I will need to declare in the Google Play Console.
+
+### 3. Architecture, Performance Optimization & Backend Resiliency
+- State & Rebuilds: Examine our state management implementations. Identify components or widgets prone to redundant rebuilds or heavy processing blocks running on the main UI isolate.
+- Lifecycle & Memory Leaks: Verify that all StreamControllers, TextControllers, AnimationControllers, and ChangeNotifiers are strictly cleaned up within their respective dispose() methods.
+- Async & Error Handling: Search for unawaited futures, missing network timeout configurations, or raw uncaught exceptions that could result in unhandled app crashes.
+- Serialization Integrity: Audit the data models and JSON deserialization logic. Check if they are resilient against missing fields or type mismatches from backend responses (e.g., lack of null-safety safeguards during parsing).
+
+### 4. Codebase Flaws vs. Strong Points
+- Provide a clear, objective diagnostic summary of the application's current health.
+- Highlight the strongest architectural components or design patterns present in the codebase that should be maintained.
+- Explicitly isolate the top 3 most critical flaws impacting the app's scalability, performance, or maintenance right now.
+
+### 5. Actionable Remediation Plans
+- For the critical bugs, vulnerabilities, or optimization bottlenecks discovered, reference the exact file paths.
+- Provide clean, production-ready Dart/Flutter snippets or structural advice showing exactly how to refactor and fix those issues.
+
+Take your time to run search queries, check the project structure, and map the files before finalizing your analysis. Begin the audit now.

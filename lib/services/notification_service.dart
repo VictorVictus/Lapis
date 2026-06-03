@@ -11,6 +11,10 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
+  static bool _permissionRationaleShown = false;
+  static bool get hasShownPermissionRationale => _permissionRationaleShown;
+  static void markPermissionRationaleShown() => _permissionRationaleShown = true;
+
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
@@ -50,23 +54,34 @@ class NotificationService {
     );
   }
 
-  Future<void> requestPermissions() async {
-    if (Platform.isIOS) {
-      await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-    } else if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      
-      await androidImplementation?.requestNotificationsPermission();
-      await androidImplementation?.requestExactAlarmsPermission();
+Future<void> requestPermissions() async {
+  if (Platform.isAndroid) {
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    // 1. Request standard notification permission (POST_NOTIFICATIONS)
+    await androidImplementation?.requestNotificationsPermission();
+
+    // 2. Handle Exact Alarms (The new way in v18.0.0+)
+    // We check the status first to see if we even need to ask
+    final bool? isAllowed = await androidImplementation?.requestExactAlarmsPermission();
+    
+    if (isAllowed == false) {
+       debugPrint('Exact Alarm permission was denied by the user.');
+       // Optionally: Show a dialog here explaining why you need it
     }
+    
+  } else if (Platform.isIOS) {
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
   }
+}
 
   Future<void> scheduleTaskNotification(Task task) async {
     if (kIsWeb || task.scheduledAt == null) return;

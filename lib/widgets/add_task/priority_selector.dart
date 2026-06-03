@@ -27,10 +27,10 @@ class PrioritySelector extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildPriorityOption('High', 0),
-            _buildPriorityOption('Medium', 1),
-            _buildPriorityOption('Low', 2),
-            _buildPriorityOption('None', 3),
+            _buildPriorityOption('High', 3),
+            _buildPriorityOption('Medium', 2),
+            _buildPriorityOption('Low', 1),
+            _buildPriorityOption('None', 0),
           ],
         ),
       ],

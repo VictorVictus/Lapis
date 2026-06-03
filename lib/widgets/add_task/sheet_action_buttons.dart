@@ -9,6 +9,7 @@ class SheetActionButtons extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isSaving = ref.watch(addTaskProvider.select((s) => s.isSaving));
+    final isEditing = ref.watch(addTaskProvider.select((s) => s.isEditing));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -22,13 +23,21 @@ class SheetActionButtons extends ConsumerWidget {
               ? null
               : () async {
                   final success = await ref.read(addTaskProvider.notifier).saveTask();
-                  if (success && context.mounted) {
+                  if (!context.mounted) return;
+                  if (success) {
                     Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        backgroundColor: Colors.redAccent,
+                        content: Text('Failed to save task. Please try again.'),
+                      ),
+                    );
                   }
                 },
           child: isSaving
               ? const CupertinoActivityIndicator(color: Colors.white)
-              : const Text('Add Task', style: TextStyle(color: CupertinoColors.systemCyan)),
+              : Text(isEditing ? 'Save' : 'Add Task', style: const TextStyle(color: CupertinoColors.systemCyan)),
         ),
       ],
     );

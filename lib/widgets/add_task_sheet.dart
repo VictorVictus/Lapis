@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/widgets/add_task/category_selector.dart';
 import 'package:to_do_app/widgets/add_task/priority_selector.dart';
 import 'package:to_do_app/widgets/add_task/recurrence_configurator.dart';
@@ -11,21 +12,41 @@ import 'package:to_do_app/widgets/add_task/deadline_selector.dart';
 import 'package:to_do_app/widgets/add_task/sheet_action_buttons.dart';
 import 'package:to_do_app/widgets/add_task/category_dialog.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
+import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/providers/categories_provider.dart';
+import 'package:to_do_app/widgets/add_task/subtask_list.dart';
 
-class AddTaskSheet extends ConsumerWidget {
-  const AddTaskSheet({super.key});
+class AddTaskSheet extends ConsumerStatefulWidget {
+  final Task? existingTask;
+
+  const AddTaskSheet({super.key, this.existingTask});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AddTaskSheet> createState() => _AddTaskSheetState();
+}
+
+class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized && widget.existingTask != null) {
+      ref.read(addTaskProvider.notifier).initForEdit(widget.existingTask!);
+      _initialized = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final categories = ref.watch(allCategoriesProvider);
     final addTaskState = ref.watch(addTaskProvider);
     final addTaskNotifier = ref.read(addTaskProvider.notifier);
 
-    // Initial category selection if none selected
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (addTaskState.selectedCategory == null && categories.isNotEmpty) {
-        addTaskNotifier.updateCategory(categories[0]);
+    ref.listen(allCategoriesProvider, (previous, next) {
+      if (next.isEmpty) return;
+      if (ref.read(addTaskProvider).selectedCategory == null) {
+        addTaskNotifier.updateCategory(next.first);
       }
     });
 
@@ -34,8 +55,8 @@ class AddTaskSheet extends ConsumerWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.secondary,
+            AppTheme.gradientColors(context).primary,
+            AppTheme.gradientColors(context).secondary,
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -51,7 +72,6 @@ class AddTaskSheet extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle Bar
               Center(
                 child: Container(
                   width: 40,
@@ -63,31 +83,24 @@ class AddTaskSheet extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 30),
-
               const TaskTitleInput(),
-
               const SizedBox(height: 20),
-
               CategorySelector(
                 categories: categories,
                 selectedCategory: addTaskState.selectedCategory,
                 onCategorySelected: (cat) => addTaskNotifier.updateCategory(cat),
                 onAddCategory: () => CategoryDialogs.showCreateCategoryDialog(context, ref),
               ),
-
               const SizedBox(height: 30),
               const Divider(color: Colors.black12),
               const SizedBox(height: 20),
-
               PrioritySelector(
                 selectedIndex: addTaskState.priorityIndex,
                 onChanged: (index) => addTaskNotifier.updatePriority(index),
               ),
-
               const SizedBox(height: 20),
               const Divider(color: Colors.black12),
               const SizedBox(height: 20),
-
               const Text(
                 'Configuration',
                 style: TextStyle(
@@ -96,10 +109,15 @@ class AddTaskSheet extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-
               const TaskNotesInput(),
               const SizedBox(height: 30),
-
+              if (addTaskState.isEditing)
+                Column(
+                  children: [
+                    SubtaskList(taskId: addTaskState.existingTask!.id),
+                    const SizedBox(height: 30),
+                  ],
+                ),
               RecurrenceConfigurator(
                 isRecurrent: addTaskState.isRecurrent,
                 onRecurrenceToggle: (val) => addTaskNotifier.updateIsRecurrent(val),
@@ -112,7 +130,6 @@ class AddTaskSheet extends ConsumerWidget {
                 customUnit: addTaskState.customUnit,
                 onCustomUnitChanged: (val) => addTaskNotifier.updateCustomUnit(val),
               ),
-
               const SizedBox(height: 30),
               const DateTimeSelector(),
               const SizedBox(height: 30),

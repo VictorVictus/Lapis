@@ -80,7 +80,7 @@ class RecurrenceConfigurator extends StatelessWidget {
               children: List.generate(7, (index) {
                 final dayIndex = index + 1; // 1=Mon, 7=Sun
                 final isSelected = selectedWeekdays.contains(dayIndex);
-                final dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+                final dayNames = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
                 return GestureDetector(
                   onTap: () {
                     final newSet = Set<int>.from(selectedWeekdays);
@@ -96,7 +96,7 @@ class RecurrenceConfigurator extends StatelessWidget {
                     height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                      color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                     child: Text(
@@ -118,7 +118,7 @@ class RecurrenceConfigurator extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -175,10 +175,10 @@ class RecurrenceConfigurator extends StatelessWidget {
     );
   }
 
-  Widget _buildRadioOption(String label, bool value) {
-     final isSelected = isRecurrent == value;
+  Widget _buildRadioOption(String label, bool selected) {
+     final isSelected = isRecurrent == selected;
      return GestureDetector(
-       onTap: () => onRecurrenceToggle(value),
+       onTap: () => onRecurrenceToggle(selected),
        child: Row(
          children: [
             Container(

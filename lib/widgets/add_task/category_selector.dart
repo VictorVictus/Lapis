@@ -36,12 +36,12 @@ class CategorySelector extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.5),
+          color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
              if(isSelected)
                BoxShadow(
-                 color: Colors.black.withOpacity(0.1),
+                 color: Colors.black.withValues(alpha: 0.1),
                  blurRadius: 4,
                  offset: const Offset(0, 2),
                )

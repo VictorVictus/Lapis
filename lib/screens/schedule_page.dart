@@ -1,12 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/user.dart' as app_user;
 import 'package:to_do_app/widgets/task_list_item.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/providers/task_provider.dart';
+import 'package:to_do_app/theme/app_theme.dart';
 
 class SchedulePage extends ConsumerStatefulWidget {
   final app_user.User user;
@@ -27,8 +27,8 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
+              AppTheme.gradientColors(context).primary,
+              AppTheme.gradientColors(context).secondary,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -146,10 +146,12 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           children: [
             IconButton(
               icon: Icon(Icons.chevron_left, color: iconColor),
+              tooltip: 'Previous month',
               onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1)),
             ),
             IconButton(
               icon: Icon(Icons.chevron_right, color: iconColor),
+              tooltip: 'Next month',
               onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1)),
             ),
           ],
@@ -222,7 +224,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             if (isSelected) {
               textColor = isDark ? Colors.white : const Color(0xFF1E58FF);
             } else {
-              textColor = isDark ? Colors.white.withOpacity(0.9) : const Color(0xFF003D9E);
+              textColor = isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF003D9E);
             }
 
             return GestureDetector(
@@ -332,9 +334,9 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               return Opacity(
                 opacity: isFulfilled ? 0.6 : 1.0,
                 child: TaskListItem(
+                  key: ValueKey(task.id),
                   task: task,
-                  onComplete: () {},
-                  selectedIndex: isFulfilled ? 2 : 0, // Pass state to trigger the right UI
+                  selectedIndex: isFulfilled ? 2 : 0,
                 ),
               );
             },

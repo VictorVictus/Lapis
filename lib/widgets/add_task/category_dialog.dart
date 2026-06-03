@@ -75,21 +75,20 @@ class CategoryDialogs {
                       final newCategory = TaskCategory(
                         id: randomId,
                         name: categoryName,
-                        color: selectedColor.value,
+                        color: selectedColor.toARGB32(),
                       );
                       
                       final user = FirebaseAuth.instance.currentUser;
                       if (user != null) {
                         try {
                           await ref.read(categoryServiceProvider).createCategory(newCategory, user.uid);
-                          // Also update selection in provider
                           ref.read(addTaskProvider.notifier).updateCategory(newCategory);
                         } catch (e) {
                           debugPrint('Error creating category: $e');
                         }
                       }
                       
-                      Navigator.pop(context);
+                      if (context.mounted) Navigator.pop(context);
                     }
                   },
                   child: const Text('Accept', style: TextStyle(color: CupertinoColors.systemGreen)),

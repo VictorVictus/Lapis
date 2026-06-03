@@ -8,13 +8,13 @@ class TaskStatusFilter extends StatelessWidget {
   final int fulfilledCount;
 
   const TaskStatusFilter({
-    Key? key,
+    super.key,
     required this.selectedIndex,
     required this.onTabSelected,
     this.undoneCount = 0,
     this.inProgressCount = 0,
     this.fulfilledCount = 0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class TaskStatusFilter extends StatelessWidget {
             decoration: BoxDecoration(
               color: selectedIndex == index
                   ? Theme.of(context).colorScheme.surface
-                  : Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                  : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -64,10 +64,10 @@ class TaskStatusFilter extends StatelessWidget {
             top: -8,
             child: Container(
               padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: Color(0xFFC0392B), // Deep notification red
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error,
                 shape: BoxShape.circle,
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Colors.black26,
                     blurRadius: 4,
