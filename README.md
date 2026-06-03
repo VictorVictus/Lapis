@@ -1,72 +1,87 @@
-# Todoist+ Flutter App
+# Lapis
 
-A modern, collaborative To-Do application built with Flutter and Firebase. This app provides a sleek user interface for managing tasks, tracking deadlines, and collaborating with others in real-time.
+<p align="center">
+  <img src="assets/icon/lapis.png" alt="Lapis" width="128">
+</p>
 
-## 🚀 Features
+A modern, cross-platform task management app built with Flutter and Firebase. Lapis combines a clean UI with real-time sync, focus tools, and deep customization — no subscriptions, no ads.
 
-- **Secure Authentication**: User sign-up and login powered by Firebase Authentication.
-- **Dynamic Dashboard**: 
-  - Filter tasks by status: *Undone*, *In Progress*, and *Fulfilled*.
-  - Real-time search functionality.
-  - Interactive calendar view for scheduling.
-- **Advanced Task Management**:
-  - Create tasks with titles, descriptions, and categories.
-  - Set specific deadlines with visual countdowns.
-  - Swipe-to-complete and swipe-to-delete gestures for a fluid UX.
-- **Collaborative Experience**:
-  - View task ownership with creator profile pictures.
-  - Real-time updates across devices using Cloud Firestore.
-- **Personalization**:
-  - Customizable categories with a built-in color picker.
-  - Profile picture uploads integrated with Firebase Storage.
-- **Cross-Platform**: Designed to work seamlessly on Mobile (Android/iOS) and Web.
+## Features
 
-## 🛠️ Tech Stack
+- **Authentication** — Email/password, Google Sign-In, Apple Sign-In, and GitHub OAuth
+- **Dashboard** — Filter by status (Undone / In Progress / Fulfilled), search, Kanban view, smart filters, group/sort options
+- **Task Management** — Titles, notes, deadlines, priorities, categories, subtasks, recurring tasks, pinning, archiving
+- **Calendar view** — Interactive date grid with colored task dots and per-day task lists
+- **Focus Mode** — Built-in Pomodoro timer with Android screen pinning support
+- **Statistics** — Completion streaks, bar charts (last 7 days), breakdowns by category/priority, focus session stats
+- **Notifications** — Deadline reminders via FCM push notifications and local scheduled alerts
+- **Weekly Review** — Automatic Sunday recap dialog with weekly completion count
+- **Realtime Sync** — Cloud Firestore with offline persistence
+- **Theming** — Light/dark/system mode, customizable accent colors
+- **Cross-platform** — Android, iOS, Web, macOS, Windows, Linux
 
-- **Frontend**: [Flutter](https://flutter.dev/) (Dart)
-- **Backend**: [Firebase](https://firebase.google.com/)
-  - **Firestore**: Real-time NoSQL database.
-  - **Auth**: Secure user management.
-  - **Storage**: Cloud storage for profile images.
-- **Styling**: Standard Material & Cupertino widgets for a native feel.
+## Tech Stack
 
-## 📦 Key Dependencies
+| Layer | Technology |
+|---|---|
+| Frontend | Flutter (Dart 3.x) |
+| State | Riverpod |
+| Backend | Firebase (Auth, Firestore, Cloud Functions, FCM, App Check, Crashlytics) |
+| Storage | Firebase Storage (profile pictures) |
 
-- `firebase_core` & `firebase_auth`: Fundamental Firebase integration.
-- `cloud_firestore`: For real-time task syncing.
-- `flutter_colorpicker`: Customizing task category colors.
-- `image_picker` & `firebase_storage`: Handling profile picture uploads.
-- `intl`: Precise date and time formatting.
-
-## ⚙️ Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) installed on your machine.
-- A Firebase project configured.
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (stable channel, Dart 3.x)
+- A Firebase project with Authentication, Firestore, and Storage enabled
 
-### Installation
+### Setup
 
-1. **Clone the Repo**:
-   ```bash
-   git clone <repository-url>
-   cd to_do_app
-   ```
+```bash
+# Clone the repo
+git clone https://github.com/<your-org>/lapis.git
+cd lapis
 
-2. **Install Packages**:
-   ```bash
-   flutter pub get
-   ```
+# Install dependencies
+flutter pub get
 
-3. **Firebase Configuration**:
-   - Run `flutterfire configure` to set up your Firebase environment locally.
-   - Ensure Firestore and Storage rules are configured to allow authenticated access.
+# Configure Firebase
+flutterfire configure --project=todoa-e26b3
 
-4. **Run the App**:
-   ```bash
-   flutter run
-   ```
+# Run on a device or emulator
+flutter run
+```
 
-## 🤝 Contributing
+> **Note:** Firestore security rules and indexes are tracked in `firestore.rules` and `firestore.indexes.json`. Deploy them with:
+> ```bash
+> firebase deploy --only firestore:rules,firestore:indexes
+> ```
 
-This project is a work in progress. Feel free to open issues or submit pull requests to improve the app!
+### Cloud Functions
+
+Deadline reminder push notifications run as a scheduled Cloud Function:
+
+```bash
+cd functions
+npm install
+npm run build
+firebase deploy --only functions
+```
+
+## Project Structure
+
+```
+lib/
+├── core/              # Bootstrap, assets, legal, shared utilities
+├── models/            # Data models (Task, User, FocusSession, etc.)
+├── providers/         # Riverpod state providers
+├── screens/           # Auth, Dashboard, Schedule, Focus, Stats, Archive
+├── services/          # Firebase interop (Auth, Tasks, Notifications, etc.)
+├── theme/             # Light & dark theme definitions
+└── widgets/           # Reusable UI components
+```
+
+## License
+
+This project is a work in progress.

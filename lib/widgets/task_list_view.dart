@@ -7,6 +7,7 @@ import 'package:to_do_app/providers/dashboard_provider.dart';
 import 'package:to_do_app/providers/task_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/widgets/empty_state_widget.dart';
+import 'package:to_do_app/core/smart_filter_utils.dart';
 import 'dart:developer';
 
 class TaskListView extends ConsumerStatefulWidget {
@@ -50,36 +51,8 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
     }
   }
 
-  bool _matchesSmartFilter(Task task, SmartFilter filter) {
-    final now = DateTime.now();
-    switch (filter) {
-      case SmartFilter.all:
-        return true;
-      case SmartFilter.today:
-        return task.scheduledAt != null &&
-            task.scheduledAt!.day == now.day &&
-            task.scheduledAt!.month == now.month &&
-            task.scheduledAt!.year == now.year;
-      case SmartFilter.thisWeek:
-        if (task.scheduledAt == null) return false;
-        final weekStart = now.subtract(Duration(days: now.weekday - 1));
-        return task.scheduledAt!.isAfter(weekStart.subtract(const Duration(hours: 1)));
-      case SmartFilter.overdue:
-        return task.deadline != null && task.deadline!.isBefore(now);
-      case SmartFilter.highPriority:
-        return task.priority == TaskPriority.high;
-      case SmartFilter.hasDeadline:
-        return task.deadline != null;
-      case SmartFilter.noDeadline:
-        return task.deadline == null;
-      case SmartFilter.thisMonth:
-        if (task.scheduledAt == null) return false;
-        return task.scheduledAt!.month == now.month &&
-            task.scheduledAt!.year == now.year;
-      case SmartFilter.recurring:
-        return task.type == TaskType.recurrent;
-    }
-  }
+  bool _matchesSmartFilter(Task task, SmartFilter filter) =>
+      matchesSmartFilter(task, filter);
 
   Widget _buildGroupedList(List<Task> tasks) {
     final groupBy = ref.watch(dashboardProvider.select((s) => s.groupBy));

@@ -44,6 +44,9 @@ credentials/
 *.key
 *.p8
 
+# Service account key for migration scripts
+serviceAccountKey.json
+
 # Authentication (safe to commit, but excluding if contains test creds)
 # lib/services/auth_service.dart  ← Remove # if you want to exclude it
 

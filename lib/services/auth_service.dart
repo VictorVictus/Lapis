@@ -527,6 +527,22 @@ class AuthService {
         batch.delete(doc.reference);
       }
 
+      final subtasks = await firestore
+          .collection('subtasks')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final doc in subtasks.docs) {
+        batch.delete(doc.reference);
+      }
+
+      final focusSessions = await firestore
+          .collection('focus_sessions')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final doc in focusSessions.docs) {
+        batch.delete(doc.reference);
+      }
+
       await batch.commit();
       await firebaseUser.delete();
 
