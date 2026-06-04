@@ -250,16 +250,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
     ref.read(dashboardProvider.notifier).clearSelection();
   }
 
-  Future<void> _batchArchive() async {
-    final ids = ref.read(dashboardProvider).selectedTaskIds;
-    try {
-      await ref.read(taskServiceProvider).archiveTasks(ids.toList());
-    } catch (e) {
-      debugPrint('Error archiving tasks: $e');
-    }
-    ref.read(dashboardProvider.notifier).clearSelection();
-  }
-
   void _batchDeleteConfirmed() {
     showCupertinoDialog(
       context: context,
@@ -348,28 +338,27 @@ class _DashboardState extends ConsumerState<Dashboard> {
                     displayUser: displayUser,
                   ),
 
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _buildSmartChip('All', SmartFilter.all, controller),
-                              for (final filter in ref.watch(smartFiltersProvider))
-                                _buildSmartChip(_filterLabel(filter), filter, controller),
-                            ],
+                  if (dashboardState.viewMode == ViewMode.list) const SizedBox(height: 8),
+                  if (dashboardState.viewMode == ViewMode.list)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildSmartChip('All', SmartFilter.all, controller),
+                                for (final filter in ref.watch(smartFiltersProvider))
+                                  _buildSmartChip(_filterLabel(filter), filter, controller),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      _buildFilterSettingsIcon(context),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
+                        const SizedBox(width: 4),
+                        _buildFilterSettingsIcon(context),
+                      ],
+                    ),
+                  if (dashboardState.viewMode == ViewMode.list) const SizedBox(height: 8),
                   
                   if (dashboardState.viewMode == ViewMode.list)
                     Consumer(
@@ -437,10 +426,11 @@ class _DashboardState extends ConsumerState<Dashboard> {
                           },
                         ),
                         const SizedBox(width: 8),
-                        _ViewModeChip(
-                          icon: _sortIcon(dashboardState.sortBy) ?? Icons.swap_vert,
-                          label: _sortLabel(dashboardState.sortBy),
-                          onTap: () {
+                        if (dashboardState.viewMode == ViewMode.list)
+                          _ViewModeChip(
+                            icon: _sortIcon(dashboardState.sortBy) ?? Icons.swap_vert,
+                            label: _sortLabel(dashboardState.sortBy),
+                            onTap: () {
                             final currentSort = dashboardState.sortBy;
                             final sortOptions = SortBy.values;
                             showCupertinoModalPopup(
@@ -610,11 +600,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
                           icon: const Icon(Icons.check),
                           tooltip: 'Mark done',
                           onPressed: selectedCount > 0 ? _batchComplete : null,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.archive_outlined),
-                          tooltip: 'Archive',
-                          onPressed: selectedCount > 0 ? _batchArchive : null,
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -832,7 +817,9 @@ class _SyncSuccessOverlayState extends ConsumerState<_SyncSuccessOverlay>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.black87,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF2A2A3E)
+                          : Colors.black87,
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(

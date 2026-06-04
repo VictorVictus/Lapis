@@ -92,14 +92,14 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                 onAddCategory: () => CategoryDialogs.showCreateCategoryDialog(context, ref),
               ),
               const SizedBox(height: 30),
-              const Divider(color: Colors.black12),
+              Divider(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12),
               const SizedBox(height: 20),
               PrioritySelector(
                 selectedIndex: addTaskState.priorityIndex,
                 onChanged: (index) => addTaskNotifier.updatePriority(index),
               ),
               const SizedBox(height: 20),
-              const Divider(color: Colors.black12),
+              Divider(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12),
               const SizedBox(height: 20),
               const Text(
                 'Configuration',

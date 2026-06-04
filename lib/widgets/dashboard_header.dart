@@ -10,8 +10,7 @@ import 'package:to_do_app/core/session_cleanup.dart';
 import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/providers/theme_provider.dart';
 import 'package:to_do_app/providers/accent_color_provider.dart';
-import 'package:to_do_app/screens/stats_page.dart';
-import 'package:to_do_app/screens/archive_page.dart';
+import 'package:to_do_app/screens/profile_page.dart';
 import 'package:intl/intl.dart';
 
 class DashboardHeader extends ConsumerWidget {
@@ -46,32 +45,42 @@ class DashboardHeader extends ConsumerWidget {
             ],
           ),
         ),
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(64, 243, 243, 243),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.4),
-                blurRadius: 8,
-                spreadRadius: 2,
+        GestureDetector(
+          onTap: () {
+            unawaited(Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfilePage(user: displayUser),
               ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              displayUser.initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            ));
+          },
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(64, 243, 243, 243),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                displayUser.initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
           ),
         ),
-
+        const SizedBox(width: 4),
         IconButton(
           icon: const Icon(CupertinoIcons.ellipsis, color: Colors.white),
           tooltip: 'Account',
@@ -109,16 +118,6 @@ class DashboardHeader extends ConsumerWidget {
                 Navigator.pop(context);
                 LegalConsentSection.openUrl(LegalConfig.privacyPolicyUrl);
               },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart_outlined),
-              title: const Text('Statistics'),
-              onTap: () => Navigator.pop(context, 'stats'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.archive_outlined),
-              title: const Text('Archive'),
-              onTap: () => Navigator.pop(context, 'archive'),
             ),
             ListTile(
               leading: const Icon(Icons.palette_outlined),
@@ -214,26 +213,6 @@ class DashboardHeader extends ConsumerWidget {
           ),
         );
       }
-    }
-
-    if (action == 'stats') {
-      unawaited(Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StatsPage(user: displayUser),
-        ),
-      ));
-      return;
-    }
-
-    if (action == 'archive') {
-      unawaited(Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ArchivePage(user: displayUser),
-        ),
-      ));
-      return;
     }
 
     if (action == 'accent') {

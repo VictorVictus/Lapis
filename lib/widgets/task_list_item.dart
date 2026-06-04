@@ -309,7 +309,6 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
       opacity: _fadeAnimation,
       child: SizeTransition(
         sizeFactor: _sizeAnimation,
-        alignment: AlignmentDirectional.center,
         child: GestureDetector(
           onHorizontalDragStart: _onHorizontalDragStart,
           onHorizontalDragUpdate: _onHorizontalDragUpdate,
@@ -455,7 +454,7 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1), 
+                            color: Colors.black.withValues(alpha: 0.08), 
                             blurRadius: 5,
                             offset: const Offset(0, 3),
                           ),
@@ -540,7 +539,7 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                                     '${widget.task.scheduledAt!.hour.toString().padLeft(2, '0')}:${widget.task.scheduledAt!.minute.toString().padLeft(2, '0')}',
                                     style: TextStyle(
                                       color: Theme.of(context).brightness == Brightness.dark 
-                                          ? Colors.white54 
+                                          ? Colors.white38
                                           : Colors.black54,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,

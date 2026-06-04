@@ -126,7 +126,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
       }
     } else {
       for (final task in tasks) {
-        final key = task.priority.name;
+        final key = task.priority.displayName;
         groups.putIfAbsent(key, () => []);
         if (!groupOrder.contains(key)) groupOrder.add(key);
         groups[key]!.add(task);
@@ -140,9 +140,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           ExpansionTile(
             initiallyExpanded: true,
             title: Text(
-              groupBy == GroupBy.category
-                  ? '$key (${groups[key]!.length})'
-                  : '${key[0].toUpperCase()}${key.substring(1)} (${groups[key]!.length})',
+              '$key (${groups[key]!.length})',
               style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
             ),
             children: groups[key]!.map((task) => TaskListItem(
@@ -177,7 +175,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
       buildDefaultDragHandles: false,
       scrollController: _scrollController,
       itemCount: tasks.length,
-      onReorderItem: _onReorder,
+      onReorder: _onReorder,
       proxyDecorator: (child, index, animation) => Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(16),

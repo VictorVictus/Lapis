@@ -176,6 +176,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1).weekday % 7;
     
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final tasksAsync = ref.watch(tasksStreamProvider(widget.user.uid));
     
     return tasksAsync.when(
@@ -217,7 +218,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
 
             Color containerColor = Colors.transparent;
             if (isSelected) {
-              containerColor = isDark ? Theme.of(context).colorScheme.primary : const Color(0xFFACE9FF);
+              containerColor = isDark ? cs.primary.withValues(alpha: 0.35) : const Color(0xFFACE9FF);
             }
 
             Color textColor;
@@ -275,11 +276,12 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
 
   Widget _buildTimePickerPlaceholder() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? Colors.transparent : Colors.white24,
+        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white24,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -289,7 +291,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: isDark ? Theme.of(context).colorScheme.primary : const Color(0xFFACE9FF),
+              color: isDark ? cs.primary.withValues(alpha: 0.35) : const Color(0xFFACE9FF),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class TaskStatusFilter extends StatelessWidget {
@@ -29,69 +30,71 @@ class TaskStatusFilter extends StatelessWidget {
   }
 
   Widget _buildTab(BuildContext context, String title, int index, int count) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GestureDetector(
-          onTap: () => onTabSelected(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: index == 0 ? Curves.bounceInOut : Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 10,
-            ),
-            decoration: BoxDecoration(
-              color: selectedIndex == index
-                  ? Theme.of(context).colorScheme.surface
-                  : Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: selectedIndex == index
-                    ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Theme.of(context).colorScheme.primary)
-                    : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[700]),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        if (count > 0)
-          Positioned(
-            right: -5,
-            top: -8,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error,
-                shape: BoxShape.circle,
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+    final isSelected = selectedIndex == index;
+    return GestureDetector(
+      onTap: () => onTabSelected(index),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: isSelected ? 0.2 : 0.08),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isSelected ? 0.35 : 0.15),
                   ),
-                ],
-              ),
-              constraints: const BoxConstraints(
-                minWidth: 20,
-                minHeight: 20,
-              ),
-              child: Center(
+                ),
                 child: Text(
-                  count.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                  title,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: isSelected ? 0.9 : 0.55),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
           ),
-      ],
+          if (count > 0)
+            Positioned(
+              right: -5,
+              top: -8,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.error,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 20,
+                  minHeight: 20,
+                ),
+                child: Center(
+                  child: Text(
+                    count.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

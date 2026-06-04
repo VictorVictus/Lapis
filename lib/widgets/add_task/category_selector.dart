@@ -40,11 +40,11 @@ class CategorySelector extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
              if(isSelected)
-               BoxShadow(
-                 color: Colors.black.withValues(alpha: 0.1),
-                 blurRadius: 4,
-                 offset: const Offset(0, 2),
-               )
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
           ]
         ),
         child: Text(

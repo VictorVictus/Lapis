@@ -11,7 +11,3 @@ final taskCountsProvider = FutureProvider.autoDispose.family<Map<TaskStatus, int
   return ref.read(taskServiceProvider).getTaskCounts(userId);
 });
 
-final archivedTasksProvider = StreamProvider.autoDispose.family<List<Task>, String>((ref, userId) {
-  return ref.read(taskServiceProvider).getArchivedTasks(userId);
-});
-

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:to_do_app/models/task.dart';
 
 final statisticsServiceProvider = Provider<StatisticsService>((ref) => StatisticsService());
@@ -11,6 +14,13 @@ class DailyStats {
   DailyStats({required this.date, required this.completed});
 }
 
+class MonthlyStats {
+  final String label;
+  final int count;
+
+  MonthlyStats({required this.label, required this.count});
+}
+
 class StatisticsData {
   final int totalCompleted;
   final int totalTasks;
@@ -19,6 +29,10 @@ class StatisticsData {
   final List<DailyStats> dailyCompletions;
   final Map<String, int> byCategory;
   final Map<String, int> byPriority;
+  final double overdueRate;
+  final double avgCompletionHours;
+  final Map<int, int> weekdayDistribution;
+  final List<MonthlyStats> monthlyTrend;
 
   StatisticsData({
     required this.totalCompleted,
@@ -28,6 +42,10 @@ class StatisticsData {
     required this.dailyCompletions,
     required this.byCategory,
     required this.byPriority,
+    required this.overdueRate,
+    required this.avgCompletionHours,
+    required this.weekdayDistribution,
+    required this.monthlyTrend,
   });
 }
 
@@ -52,6 +70,10 @@ class StatisticsService {
     final streak = _computeStreak(daily);
     final byCat = _byCategory(tasks);
     final byPri = _byPriority(tasks);
+    final overdue = _computeOverdueRate(completed);
+    final avgHours = _computeAvgCompletionHours(completed);
+    final weekdays = _computeWeekdayDistribution(completed);
+    final monthly = _computeMonthlyTrend(completed);
 
     return StatisticsData(
       totalCompleted: totalCompleted,
@@ -61,6 +83,10 @@ class StatisticsService {
       dailyCompletions: _last7Days(daily),
       byCategory: byCat,
       byPriority: byPri,
+      overdueRate: overdue,
+      avgCompletionHours: avgHours,
+      weekdayDistribution: weekdays,
+      monthlyTrend: monthly,
     );
   }
 
@@ -127,9 +153,68 @@ class StatisticsService {
   Map<String, int> _byPriority(List<Task> tasks) {
     final map = <String, int>{};
     for (final task in tasks) {
-      final name = task.priority.name;
+      final name = task.priority.displayName;
       map[name] = (map[name] ?? 0) + 1;
     }
     return map;
+  }
+
+  double _computeOverdueRate(List<Task> completed) {
+    int overdue = 0;
+    int withDeadline = 0;
+    for (final task in completed) {
+      if (task.deadline != null) {
+        withDeadline++;
+        final completedDate = task.completedAt ?? task.createdAt;
+        if (completedDate.isAfter(task.deadline!)) {
+          overdue++;
+        }
+      }
+    }
+    return withDeadline > 0 ? overdue / withDeadline : 0.0;
+  }
+
+  double _computeAvgCompletionHours(List<Task> completed) {
+    if (completed.isEmpty) return 0.0;
+    double totalHours = 0;
+    int count = 0;
+    for (final task in completed) {
+      if (task.completedAt != null) {
+        final diff = task.completedAt!.difference(task.createdAt);
+        totalHours += diff.inMinutes / 60.0;
+        count++;
+      }
+    }
+    return count > 0 ? totalHours / count : 0.0;
+  }
+
+  Map<int, int> _computeWeekdayDistribution(List<Task> completed) {
+    final map = <int, int>{};
+    for (final task in completed) {
+      final day = task.completedAt ?? task.createdAt;
+      final wd = day.weekday; // 1=Mon .. 7=Sun
+      map[wd] = (map[wd] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  List<MonthlyStats> _computeMonthlyTrend(List<Task> completed) {
+    final map = <String, int>{};
+    for (final task in completed) {
+      final day = task.completedAt ?? task.createdAt;
+      final key = DateFormat('MMM yyyy').format(day);
+      map[key] = (map[key] ?? 0) + 1;
+    }
+    final sorted = map.entries.toList()
+      ..sort((a, b) => _monthYearKey(a.key).compareTo(_monthYearKey(b.key)));
+    return sorted.map((e) => MonthlyStats(label: e.key, count: e.value)).toList();
+  }
+
+  int _monthYearKey(String label) {
+    try {
+      return DateFormat('MMM yyyy').parse(label).millisecondsSinceEpoch;
+    } catch (_) {
+      return 0;
+    }
   }
 }

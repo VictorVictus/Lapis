@@ -126,28 +126,6 @@ class TaskService {
     );
   }
 
-  Future<void> archiveTask(String taskId) async {
-    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
-      await _firestore.collection('tasks').doc(taskId).update({
-        'archivedAt': DateTime.now(),
-        'isArchived': true,
-      });
-    });
-  }
-
-  Future<void> archiveTasks(List<String> taskIds) async {
-    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
-      final batch = _firestore.batch();
-      for (final id in taskIds) {
-        batch.update(_firestore.collection('tasks').doc(id), {
-          'archivedAt': DateTime.now(),
-          'isArchived': true,
-        });
-      }
-      await batch.commit();
-    });
-  }
-
   Stream<List<Task>> getTasksForUser(String userId) {
     return _withTimeout(
       _firestore
@@ -158,21 +136,6 @@ class TaskService {
             (snapshot) => snapshot.docs
                 .map((doc) => Task.fromMap(doc.data(), doc.id))
                 .where((task) => !task.isArchived)
-                .toList(),
-          ),
-    );
-  }
-
-  Stream<List<Task>> getArchivedTasks(String userId) {
-    return _withTimeout(
-      _firestore
-          .collection('tasks')
-          .where('userId', isEqualTo: userId)
-          .snapshots()
-          .map(
-            (snapshot) => snapshot.docs
-                .map((doc) => Task.fromMap(doc.data(), doc.id))
-                .where((task) => task.isArchived)
                 .toList(),
           ),
     );

@@ -8,6 +8,21 @@ enum TaskType { oneTime, recurrent }
 
 enum TaskPriority { none, low, medium, high }
 
+extension TaskPriorityDisplay on TaskPriority {
+  String get displayName {
+    switch (this) {
+      case TaskPriority.none:
+        return 'None';
+      case TaskPriority.low:
+        return 'Low';
+      case TaskPriority.medium:
+        return 'Medium';
+      case TaskPriority.high:
+        return 'High';
+    }
+  }
+}
+
 class Task {
   final String id;
   final String userId; // Correct: tracking who created this
