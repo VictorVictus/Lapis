@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:to_do_app/models/user.dart';
-import 'package:to_do_app/screens/schedule_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_app/providers/sync_provider.dart';
 import 'package:to_do_app/services/auth_service.dart';
 import 'package:to_do_app/widgets/legal_consent_section.dart';
 import 'package:to_do_app/core/legal_config.dart';
@@ -13,7 +10,6 @@ import 'package:to_do_app/core/session_cleanup.dart';
 import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/providers/theme_provider.dart';
 import 'package:to_do_app/providers/accent_color_provider.dart';
-import 'package:to_do_app/providers/dashboard_provider.dart';
 import 'package:to_do_app/screens/stats_page.dart';
 import 'package:to_do_app/screens/archive_page.dart';
 import 'package:intl/intl.dart';
@@ -25,9 +21,6 @@ class DashboardHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final syncStatus = ref.watch(syncStatusProvider);
-    final showSuccess = ref.watch(showSuccessIndicatorProvider);
-    final groupBy = ref.watch(dashboardProvider.select((s) => s.groupBy));
     return Row(
       children: [
         Expanded(
@@ -78,130 +71,7 @@ class DashboardHeader extends ConsumerWidget {
             ),
           ),
         ),
-        SizedBox(
-          width: 24,
-          height: 48,
-          child: Center(
-            child: SizedBox(
-              width: 16,
-              height: 16,
-              child: _buildSyncIndicatorContent(syncStatus, showSuccess),
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            final next = switch (groupBy) {
-              GroupBy.none => GroupBy.category,
-              GroupBy.category => GroupBy.priority,
-              GroupBy.priority => GroupBy.none,
-            };
-            ref.read(dashboardProvider.notifier).setGroupBy(next);
-          },
-          onLongPress: () {
-            final currentSort = ref.read(dashboardProvider).sortBy;
-            final sortOptions = SortBy.values;
-            showCupertinoModalPopup(
-              context: context,
-              builder: (ctx) => CupertinoActionSheet(
-                title: const Text('Sort by'),
-                actions: [
-                  for (final sort in sortOptions)
-                    CupertinoActionSheetAction(
-                      isDefaultAction: sort == currentSort,
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        ref.read(dashboardProvider.notifier).setSortBy(sort);
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _sortIcon(sort),
-                            size: 18,
-                            color: sort == currentSort
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(_sortLabel(sort)),
-                        ],
-                      ),
-                    ),
-                ],
-                cancelButton: CupertinoActionSheetAction(
-                  isDestructiveAction: true,
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-              ),
-            );
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Icon(
-                  groupBy == GroupBy.none ? Icons.view_list_outlined
-                      : groupBy == GroupBy.category
-                          ? Icons.category_outlined
-                          : Icons.flag_outlined,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Semantics(
-          label: 'Calendar',
-          child: GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => SchedulePage(user: displayUser),
-              ),
-            );
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(
-                  CupertinoIcons.calendar,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-          ),
-        ),
-        const SizedBox(width: 12),
+
         IconButton(
           icon: const Icon(CupertinoIcons.ellipsis, color: Colors.white),
           tooltip: 'Account',
@@ -454,77 +324,4 @@ class DashboardHeader extends ConsumerWidget {
     }
   }
 
-  static IconData _sortIcon(SortBy sortBy) => switch (sortBy) {
-        SortBy.order => Icons.drag_handle,
-        SortBy.deadline => Icons.event,
-        SortBy.priority => Icons.flag,
-        SortBy.created => Icons.add_circle_outline,
-      };
-
-  static String _sortLabel(SortBy sortBy) => switch (sortBy) {
-        SortBy.order => 'Manual',
-        SortBy.deadline => 'Deadline',
-        SortBy.priority => 'Priority',
-        SortBy.created => 'Created',
-      };
-
-  Widget _buildSyncIndicatorContent(SyncStatus status, bool showSuccess) {
-    if (status == SyncStatus.syncing) {
-      return const _RotatingSyncIcon();
-    }
-    if (status == SyncStatus.error) {
-      return const Icon(
-        CupertinoIcons.exclamationmark_circle,
-        color: Colors.redAccent,
-        size: 20,
-      );
-    }
-    if (showSuccess) {
-      return const Icon(
-        CupertinoIcons.check_mark_circled,
-        color: Colors.greenAccent,
-        size: 20,
-      );
-    }
-    return const SizedBox.shrink();
-  }
-}
-
-class _RotatingSyncIcon extends StatefulWidget {
-  const _RotatingSyncIcon();
-
-  @override
-  State<_RotatingSyncIcon> createState() => _RotatingSyncIconState();
-}
-
-class _RotatingSyncIconState extends State<_RotatingSyncIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _controller,
-      child: const Icon(
-        CupertinoIcons.arrow_2_circlepath,
-        color: Colors.white70,
-        size: 20,
-      ),
-    );
-  }
 }

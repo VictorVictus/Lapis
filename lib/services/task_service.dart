@@ -126,26 +126,6 @@ class TaskService {
     );
   }
 
-  Stream<List<Task>> getFilteredTasksStream(String userId, int statusIndex, {int? limit}) {
-    Query<Map<String, dynamic>> query = _firestore
-        .collection('tasks')
-        .where('userId', isEqualTo: userId)
-        .where('status', isEqualTo: statusIndex);
-
-    if (limit != null) {
-      query = query.limit(limit);
-    }
-
-    return _withTimeout(
-      query.snapshots().map((snapshot) {
-        return snapshot.docs
-            .map((doc) => Task.fromMap(doc.data(), doc.id))
-            .where((task) => !task.isArchived)
-            .toList();
-      }),
-    );
-  }
-
   Future<void> archiveTask(String taskId) async {
     await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
       await _firestore.collection('tasks').doc(taskId).update({

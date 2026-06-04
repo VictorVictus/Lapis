@@ -29,6 +29,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     if (mounted) setState(() => _focusStats = stats);
   }
 
+  Future<void> _refresh() async {
+    ref.invalidate(statisticsProvider(widget.user.uid));
+    await _loadFocusStats();
+  }
+
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(statisticsProvider(widget.user.uid));
@@ -38,10 +43,13 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         title: const Text('Statistics'),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
-      body: statsAsync.when(
-        data: (stats) => _buildContent(context, stats),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: statsAsync.when(
+          data: (stats) => _buildContent(context, stats),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+        ),
       ),
     );
   }
@@ -83,21 +91,21 @@ class _StatsPageState extends ConsumerState<StatsPage> {
   }
 
   Widget _buildSummaryRow(StatisticsData stats) {
-    return Row(
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
       children: [
         _buildStatCard('Completed', '${stats.totalCompleted}', Colors.green),
-        const SizedBox(width: 12),
         _buildStatCard('Total', '${stats.totalTasks}', Colors.blue),
-        const SizedBox(width: 12),
         _buildStatCard('Streak', '${stats.currentStreak} days', Colors.orange),
-        const SizedBox(width: 12),
         _buildStatCard('Best', '${stats.bestStreak} days', Colors.purple),
       ],
     );
   }
 
   Widget _buildStatCard(String label, String value, Color color) {
-    return Expanded(
+    return SizedBox(
+      width: 150,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(12),

@@ -309,7 +309,7 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
       opacity: _fadeAnimation,
       child: SizeTransition(
         sizeFactor: _sizeAnimation,
-        axisAlignment: 0.0,
+        alignment: AlignmentDirectional.center,
         child: GestureDetector(
           onHorizontalDragStart: _onHorizontalDragStart,
           onHorizontalDragUpdate: _onHorizontalDragUpdate,

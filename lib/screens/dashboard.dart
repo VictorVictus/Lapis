@@ -8,6 +8,7 @@ import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/user.dart';
 import 'package:to_do_app/widgets/task_list_view.dart';
 import 'package:to_do_app/widgets/kanban_view.dart';
+import 'package:to_do_app/screens/schedule_page.dart';
 import 'package:to_do_app/widgets/add_task_sheet.dart';
 import 'package:to_do_app/widgets/dashboard_header.dart';
 import 'package:to_do_app/widgets/task_status_filter.dart';
@@ -16,7 +17,6 @@ import 'package:to_do_app/providers/dashboard_provider.dart';
 import 'package:to_do_app/providers/user_provider.dart';
 import 'package:to_do_app/providers/sync_provider.dart';
 import 'package:to_do_app/providers/task_provider.dart';
-import 'package:to_do_app/providers/pagination_provider.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
 import 'package:to_do_app/providers/categories_provider.dart';
 import 'package:to_do_app/providers/smart_filters_provider.dart';
@@ -339,7 +339,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
             child: Padding(
               padding: EdgeInsets.only(
                 left: 20, right: 20, top: 50,
-                bottom: selectionMode ? 70 : 100,
+                bottom: 10,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +371,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
                   
                   const SizedBox(height: 8),
                   
-                  if (dashboardState.viewMode != ViewMode.kanban)
+                  if (dashboardState.viewMode == ViewMode.list)
                     Consumer(
                       builder: (context, ref, child) {
                         final countsAsync = ref.watch(taskCountsProvider(displayUser.uid));
@@ -386,7 +386,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
                           inProgressCount: counts[TaskStatus.inProgress] ?? 0,
                           fulfilledCount: counts[TaskStatus.fulfilled] ?? 0,
                           onTabSelected: (index) {
-                            ref.read(taskLimitProvider.notifier).reset();
                             ref.read(dashboardProvider.notifier).setTabIndex(index);
                           },
                         );
@@ -408,8 +407,85 @@ class _DashboardState extends ConsumerState<Dashboard> {
                           ),
                   ),
 
+                  const SizedBox(height: 6),
+
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _ViewModeChip(
+                          icon: dashboardState.viewMode == ViewMode.kanban
+                              ? Icons.dashboard_outlined
+                              : Icons.view_list_outlined,
+                          label: dashboardState.viewMode == ViewMode.kanban
+                              ? 'Switch to List'
+                              : 'Switch to Kanban',
+                          onTap: () => ref.read(dashboardProvider.notifier).toggleViewMode(),
+                        ),
+                        const SizedBox(width: 8),
+                        _ViewModeChip(
+                          icon: Icons.calendar_month_outlined,
+                          label: 'Schedule',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SchedulePage(user: displayUser),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _ViewModeChip(
+                          icon: _sortIcon(dashboardState.sortBy) ?? Icons.swap_vert,
+                          label: _sortLabel(dashboardState.sortBy),
+                          onTap: () {
+                            final currentSort = dashboardState.sortBy;
+                            final sortOptions = SortBy.values;
+                            showCupertinoModalPopup(
+                              context: context,
+                              builder: (ctx) => CupertinoActionSheet(
+                                title: const Text('Sort by'),
+                                actions: [
+                                  for (final sort in sortOptions)
+                                    CupertinoActionSheetAction(
+                                      isDefaultAction: sort == currentSort,
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        ref.read(dashboardProvider.notifier).setSortBy(sort);
+                                      },
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            _sortIcon(sort),
+                                            size: 18,
+                                            color: sort == currentSort
+                                                ? Theme.of(context).colorScheme.primary
+                                                : null,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(_sortLabel(sort)),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                                cancelButton: CupertinoActionSheetAction(
+                                  isDestructiveAction: true,
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Cancel'),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 14),
                     child: CupertinoTextField(
                       controller: _quickAddController,
                       placeholder: 'Quick add...',
@@ -423,57 +499,50 @@ class _DashboardState extends ConsumerState<Dashboard> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () => ref.read(dashboardProvider.notifier).toggleViewMode(),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      dashboardState.viewMode == ViewMode.kanban
-                                          ? Icons.view_list_outlined
-                                          : Icons.dashboard_outlined,
-                                      color: Colors.white70,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      dashboardState.viewMode == ViewMode.kanban
-                                          ? 'List view'
-                                          : 'Kanban view',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                  if (!selectionMode)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 60),
+                      child: SizedBox(
+                        height: 56,
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const AddTaskSheet(),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.surface,
+                            foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.primary,
+                            elevation: 6,
+                            shadowColor: Colors.black26,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
                             ),
                           ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_circle_outline, size: 28),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Add a New Task',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -495,56 +564,10 @@ class _DashboardState extends ConsumerState<Dashboard> {
               ],
             ),
           ),
+          const _SyncSuccessOverlay(),
         ],
       ),
-      floatingActionButton: selectionMode
-          ? null
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: SizedBox(
-                height: 70,
-                width: 400,
-                child: FloatingActionButton(
-                  onPressed: () {
-                    HapticFeedback.mediumImpact();
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => const AddTaskSheet(),
-                    );
-                  },
-                  backgroundColor: Theme.of(context).colorScheme.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(35),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_circle_outline,
-                        color: Theme.of(context).brightness == Brightness.dark 
-                                 ? Colors.white 
-                                 : Theme.of(context).colorScheme.primary,
-                        size: 30,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Add a New Task',
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark 
-                                   ? Colors.white 
-                                   : CupertinoColors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
       bottomNavigationBar: selectionMode
           ? BottomAppBar(
               color: Theme.of(context).colorScheme.surface,
@@ -696,6 +719,20 @@ class _DashboardState extends ConsumerState<Dashboard> {
     );
   }
 
+  static IconData? _sortIcon(SortBy sortBy) => switch (sortBy) {
+        SortBy.order => null,
+        SortBy.deadline => Icons.event,
+        SortBy.priority => Icons.flag,
+        SortBy.created => Icons.add_circle_outline,
+      };
+
+  static String _sortLabel(SortBy sortBy) => switch (sortBy) {
+        SortBy.order => 'Manual',
+        SortBy.deadline => 'Deadline',
+        SortBy.priority => 'Priority',
+        SortBy.created => 'Created',
+      };
+
   Widget _buildSmartChip(String label, SmartFilter filter, DashboardNotifier controller) {
     final current = ref.watch(dashboardProvider.select((s) => s.smartFilter));
     final selected = current == filter;
@@ -710,6 +747,159 @@ class _DashboardState extends ConsumerState<Dashboard> {
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onSelected: (_) => controller.setSmartFilter(filter),
+      ),
+    );
+  }
+}
+
+class _SyncSuccessOverlay extends ConsumerStatefulWidget {
+  const _SyncSuccessOverlay();
+
+  @override
+  ConsumerState<_SyncSuccessOverlay> createState() => _SyncSuccessOverlayState();
+}
+
+class _SyncSuccessOverlayState extends ConsumerState<_SyncSuccessOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleIn;
+  late Animation<double> _fadeIn;
+  Timer? _debounceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _scaleIn = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+    );
+    _fadeIn = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.25, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _animate() {
+    _controller.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) _controller.reverse();
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen<bool>(showSuccessIndicatorProvider, (prev, next) {
+      if (next == true && prev == false) {
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(seconds: 2), () {
+          if (mounted) _animate();
+        });
+      }
+      if (next == false) {
+        _debounceTimer?.cancel();
+        _controller.reverse();
+      }
+    });
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        if (_controller.value == 0 && !_controller.isAnimating) {
+          return const SizedBox.shrink();
+        }
+        return Positioned(
+          bottom: 180,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: Center(
+              child: Opacity(
+                opacity: _fadeIn.value,
+                child: Transform.scale(
+                  scale: _scaleIn.value,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(CupertinoIcons.check_mark_circled_solid, color: Colors.greenAccent, size: 22),
+                        SizedBox(width: 8),
+                        Text('Synced', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ViewModeChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ViewModeChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white70, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
