@@ -511,37 +511,23 @@ class AuthService {
 
       batch.delete(firestore.collection('users').doc(uid));
 
-      final tasks = await firestore
-          .collection('tasks')
-          .where('userId', isEqualTo: uid)
-          .get();
-      for (final doc in tasks.docs) {
-        batch.delete(doc.reference);
+      Future<void> deleteCollection(String collection) async {
+        try {
+          final snap = await firestore.collection(collection).where('userId', isEqualTo: uid).get();
+          for (final doc in snap.docs) {
+            batch.delete(doc.reference);
+          }
+        } catch (e) {
+          log('Error deleting $collection for uid $uid: $e');
+        }
       }
 
-      final categories = await firestore
-          .collection('categories')
-          .where('userId', isEqualTo: uid)
-          .get();
-      for (final doc in categories.docs) {
-        batch.delete(doc.reference);
-      }
-
-      final subtasks = await firestore
-          .collection('subtasks')
-          .where('userId', isEqualTo: uid)
-          .get();
-      for (final doc in subtasks.docs) {
-        batch.delete(doc.reference);
-      }
-
-      final focusSessions = await firestore
-          .collection('focus_sessions')
-          .where('userId', isEqualTo: uid)
-          .get();
-      for (final doc in focusSessions.docs) {
-        batch.delete(doc.reference);
-      }
+      await Future.wait([
+        deleteCollection('tasks'),
+        deleteCollection('categories'),
+        deleteCollection('subtasks'),
+        deleteCollection('focus_sessions'),
+      ]);
 
       await batch.commit();
       await firebaseUser.delete();

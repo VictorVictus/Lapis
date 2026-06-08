@@ -59,18 +59,28 @@ final unifiedTasksProvider = StreamProvider.family<List<Task>, String>((ref, use
       return;
     }
 
-    Future.wait(groupIds.map((id) => FirebaseFirestore.instance.collection('groups').doc(id).get())).then((snapshots) {
+    Future.wait(groupIds.map((id) =>
+      FirebaseFirestore.instance.collection('groups').doc(id).get().then<DocumentSnapshot<Map<String, dynamic>>?>(
+        (doc) => doc,
+        onError: (_) => null,
+      )
+    )).then((snapshots) {
       for (final doc in snapshots) {
-        if (!doc.exists) continue;
+        if (doc == null || !doc.exists) continue;
         final group = Group.fromMap(doc.data()!, doc.id);
         final sub = groupService.tasksStream(group.id).listen((groupTasks) {
           groupTasksAsTasks[group.id] = groupTasks.map((gt) => gt.toTask(groupName: group.name)).toList();
+          emit();
+        }, onError: (e) {
+          groupTasksAsTasks.remove(group.id);
           emit();
         });
         taskSubs.add(sub);
       }
       emit();
     });
+  }, onError: (e) {
+    controller.addError(e);
   });
 
   return controller.stream;

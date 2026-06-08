@@ -7,7 +7,7 @@ final groupListProvider = StreamProvider.family<List<Group>, String>((ref, userI
   return ref.read(groupServiceProvider).getGroups(userId);
 });
 
-final groupMemberStreamProvider = StreamProvider.family<GroupMember, ({String groupId, String uid})>(
+final groupMemberStreamProvider = StreamProvider.family<GroupMember?, ({String groupId, String uid})>(
   (ref, params) => ref.read(groupServiceProvider).memberStream(params.groupId, params.uid),
 );
 
