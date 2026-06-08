@@ -55,6 +55,7 @@ class NotificationService {
   }
 
 Future<void> requestPermissions() async {
+  if (kIsWeb) return;
   if (Platform.isAndroid) {
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
         _notificationsPlugin.resolvePlatformSpecificImplementation<

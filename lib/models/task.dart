@@ -41,6 +41,9 @@ class Task {
   bool isArchived;
   bool pinned;
   double order;
+  String? groupId;
+  String? groupName;
+  String? completedBy;
 
   Task({
     required this.id,
@@ -60,6 +63,9 @@ class Task {
     this.archivedAt,
     this.isArchived = false,
     this.pinned = false,
+    this.groupId,
+    this.groupName,
+    this.completedBy,
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String id) {
@@ -96,6 +102,9 @@ class Task {
       archivedAt: (map['archivedAt'] as Timestamp?)?.toDate(),
       isArchived: map['isArchived'] as bool? ?? false,
       pinned: map['pinned'] as bool? ?? false,
+      groupId: map['groupId'] as String?,
+      groupName: map['groupName'] as String?,
+      completedBy: map['completedBy'] as String?,
     );
   }
 
@@ -117,6 +126,9 @@ class Task {
       'archivedAt': archivedAt,
       'isArchived': isArchived,
       'pinned': pinned,
+      'groupId': groupId,
+      'groupName': groupName,
+      'completedBy': completedBy,
     };
   }
 
@@ -135,6 +147,9 @@ class Task {
     bool? isArchived,
     bool? pinned,
     double? order,
+    String? groupId,
+    String? groupName,
+    String? completedBy,
   }) {
     return Task(
       id: id,
@@ -154,6 +169,9 @@ class Task {
       isArchived: isArchived ?? this.isArchived,
       pinned: pinned ?? this.pinned,
       order: order ?? this.order,
+      groupId: groupId ?? this.groupId,
+      groupName: groupName ?? this.groupName,
+      completedBy: completedBy ?? this.completedBy,
     );
   }
 }

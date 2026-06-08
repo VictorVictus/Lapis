@@ -8,6 +8,8 @@ class DateTimeSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheduledAt = ref.watch(addTaskProvider.select((s) => s.scheduledAt));
+    final now = DateTime.now();
+    final clampedDate = scheduledAt.isBefore(now) ? now : scheduledAt;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,8 +32,8 @@ class DateTimeSelector extends ConsumerWidget {
             data: const CupertinoThemeData(brightness: Brightness.dark),
             child: CupertinoDatePicker(
               mode: CupertinoDatePickerMode.dateAndTime,
-              initialDateTime: scheduledAt,
-              minimumDate: DateTime.now(),
+              initialDateTime: clampedDate,
+              minimumDate: now,
               onDateTimeChanged: (DateTime newDate) {
                 ref.read(addTaskProvider.notifier).updateScheduledAt(newDate);
               },

@@ -11,6 +11,7 @@ import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/providers/theme_provider.dart';
 import 'package:to_do_app/providers/accent_color_provider.dart';
 import 'package:to_do_app/screens/profile_page.dart';
+import 'package:to_do_app/widgets/group_list_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardHeader extends ConsumerWidget {
@@ -50,6 +51,40 @@ class DashboardHeader extends ConsumerWidget {
             unawaited(Navigator.push(
               context,
               MaterialPageRoute(
+                builder: (_) => const GroupListScreen(),
+              ),
+            ));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(60, 243, 243, 243),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(CupertinoIcons.group, color: Colors.white, size: 13),
+                const SizedBox(width: 3),
+                Text(
+                  'My Groups',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () {
+            unawaited(Navigator.push(
+              context,
+              MaterialPageRoute(
                 builder: (_) => ProfilePage(user: displayUser),
               ),
             ));
@@ -80,7 +115,6 @@ class DashboardHeader extends ConsumerWidget {
             ),
           ),
         ),
-        const SizedBox(width: 4),
         IconButton(
           icon: const Icon(CupertinoIcons.ellipsis, color: Colors.white),
           tooltip: 'Account',

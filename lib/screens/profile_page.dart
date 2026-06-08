@@ -32,8 +32,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _loadFocusStats() async {
-    final stats = await FocusSessionService().getStats(widget.user.uid);
-    if (mounted) setState(() => _focusStats = stats);
+    try {
+      final stats = await FocusSessionService().getStats(widget.user.uid);
+      if (mounted) setState(() => _focusStats = stats);
+    } catch (e) {
+      debugPrint('Error loading focus stats: $e');
+    }
   }
 
   Future<void> _refresh() async {

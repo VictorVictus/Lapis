@@ -1,0 +1,233 @@
+import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_app/models/subclasses/group.dart';
+import 'package:to_do_app/models/subclasses/group_task.dart';
+
+final groupServiceProvider = Provider<GroupService>((ref) => GroupService());
+
+class GroupService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  String _generateInviteCode() {
+    final rand = Random();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final parts = List.generate(2, (_) =>
+      List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join()
+    );
+    return parts.join('-');
+  }
+
+  Stream<List<Group>> getGroups(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .asyncMap((snap) async {
+      final data = snap.data();
+      final groupIds = (data?['groupIds'] as List<dynamic>?)?.cast<String>() ?? [];
+      if (groupIds.isEmpty) return [];
+      final groups = await Future.wait(
+        groupIds.map((id) async {
+          final doc = await _firestore.collection('groups').doc(id).get();
+          return doc.exists ? Group.fromMap(doc.data()!, doc.id) : null;
+        }),
+      );
+      return groups.whereType<Group>().toList();
+    });
+  }
+
+  Future<Group> createGroup(String name, String userId, String username, {String? description}) async {
+    final ref = _firestore.collection('groups').doc();
+    final code = _generateInviteCode();
+    final now = DateTime.now();
+
+    await ref.set({
+      'name': name,
+      'description': description,
+      'createdBy': userId,
+      'inviteCode': code,
+      'createdAt': Timestamp.fromDate(now),
+      'memberCount': 1,
+    });
+
+    await ref.collection('members').doc(userId).set({
+      'role': 'admin',
+      'joinedAt': Timestamp.fromDate(now),
+      'username': username,
+    });
+
+    await _firestore.collection('users').doc(userId).update({
+      'groupIds': FieldValue.arrayUnion([ref.id]),
+    });
+
+    return Group(
+      id: ref.id,
+      name: name,
+      description: description,
+      createdBy: userId,
+      inviteCode: code,
+      createdAt: now,
+      memberCount: 1,
+    );
+  }
+
+  Future<String?> joinByCode(String code, String userId, String username) async {
+    final trimmed = code.trim().toUpperCase();
+    final snapshot = await _firestore
+        .collection('groups')
+        .where('inviteCode', isEqualTo: trimmed)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return null;
+
+    final groupDoc = snapshot.docs.first;
+    final groupId = groupDoc.id;
+
+    final existing = await groupDoc.reference.collection('members').doc(userId).get();
+    if (existing.exists) return groupId;
+
+    await groupDoc.reference.collection('members').doc(userId).set({
+      'role': 'member',
+      'joinedAt': Timestamp.fromDate(DateTime.now()),
+      'username': username,
+    });
+
+    await groupDoc.reference.update({
+      'memberCount': FieldValue.increment(1),
+    });
+
+    await _firestore.collection('users').doc(userId).update({
+      'groupIds': FieldValue.arrayUnion([groupId]),
+    });
+
+    return groupId;
+  }
+
+  Future<void> leaveGroup(String groupId, String userId) async {
+    final ref = _firestore.collection('groups').doc(groupId);
+    await ref.collection('members').doc(userId).delete();
+    await ref.update({'memberCount': FieldValue.increment(-1)});
+    await _firestore.collection('users').doc(userId).update({
+      'groupIds': FieldValue.arrayRemove([groupId]),
+    });
+  }
+
+  Stream<GroupMember> memberStream(String groupId, String uid) {
+    return _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .doc(uid)
+        .snapshots()
+        .map((snap) => GroupMember.fromMap(snap.data() as Map<String, dynamic>, snap.id));
+  }
+
+  Stream<List<GroupMember>> membersStream(String groupId) {
+    return _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('members')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => GroupMember.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Future<String> regenerateInviteCode(String groupId, String userId) async {
+    final code = _generateInviteCode();
+    await _firestore.collection('groups').doc(groupId).update({'inviteCode': code});
+    return code;
+  }
+
+  Stream<List<GroupTask>> tasksStream(String groupId) {
+    return _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => GroupTask.fromMap(doc.data(), doc.id, groupId: groupId))
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order)));
+  }
+
+  Future<void> createTask(GroupTask task) async {
+    await _firestore
+        .collection('groups')
+        .doc(task.groupId)
+        .collection('tasks')
+        .doc(task.id)
+        .set(task.toMap());
+  }
+
+  Future<void> updateTask(GroupTask task) async {
+    await _firestore
+        .collection('groups')
+        .doc(task.groupId)
+        .collection('tasks')
+        .doc(task.id)
+        .update(task.toMap());
+  }
+
+  Future<void> deleteTask(String groupId, String taskId) async {
+    await _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .doc(taskId)
+        .delete();
+  }
+
+  String generateTaskId(String groupId) {
+    return _firestore.collection('groups').doc(groupId).collection('tasks').doc().id;
+  }
+
+  Stream<List<GroupSubTask>> subTasksStream(String groupId, String taskId) {
+    return _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .doc(taskId)
+        .collection('subtasks')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => GroupSubTask.fromMap(doc.data(), doc.id, groupTaskId: taskId))
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order)));
+  }
+
+  Future<void> createSubTask(GroupSubTask subTask, String groupId) async {
+    await _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .doc(subTask.groupTaskId)
+        .collection('subtasks')
+        .doc(subTask.id)
+        .set(subTask.toMap());
+  }
+
+  Future<void> updateSubTask(GroupSubTask subTask, String groupId) async {
+    await _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .doc(subTask.groupTaskId)
+        .collection('subtasks')
+        .doc(subTask.id)
+        .update(subTask.toMap());
+  }
+
+  Future<void> deleteSubTask(String groupId, String taskId, String subTaskId) async {
+    await _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('tasks')
+        .doc(taskId)
+        .collection('subtasks')
+        .doc(subTaskId)
+        .delete();
+  }
+}

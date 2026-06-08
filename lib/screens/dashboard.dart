@@ -23,6 +23,7 @@ import 'package:to_do_app/providers/smart_filters_provider.dart';
 import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/services/share_service.dart';
 import 'package:to_do_app/core/smart_filter_utils.dart';
 import 'package:to_do_app/theme/app_theme.dart';
@@ -86,6 +87,71 @@ class _DashboardState extends ConsumerState<Dashboard> {
     if (text != null && mounted) {
       _openAddTaskSheetWithText(text);
     }
+  }
+
+  void _showAddTaskChoice() {
+    final groupService = ref.read(groupServiceProvider);
+    final uid = widget.user.uid;
+
+    groupService.getGroups(uid).first.then((groups) {
+      if (!mounted) return;
+      final actions = <CupertinoActionSheetAction>[
+        CupertinoActionSheetAction(
+          onPressed: () {
+            Navigator.pop(context);
+            if (!mounted) return;
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => const AddTaskSheet(),
+            );
+          },
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person, size: 18),
+              SizedBox(width: 8),
+              Text('Personal task'),
+            ],
+          ),
+        ),
+        if (groups.isNotEmpty) ...[
+          for (final g in groups)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(context);
+                if (!mounted) return;
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => AddTaskSheet(groupId: g.id),
+                );
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.group, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(g.name, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+            ),
+        ],
+      ];
+
+      actions.add(CupertinoActionSheetAction(
+        isDestructiveAction: true,
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ));
+
+      showCupertinoModalPopup(context: context, builder: (_) => CupertinoActionSheet(
+        title: const Text('Add task to…'),
+        actions: actions,
+      ));
+    });
   }
 
   void _openAddTaskSheetWithText(String text) {
@@ -425,6 +491,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
                             );
                           },
                         ),
+
                         const SizedBox(width: 8),
                         if (dashboardState.viewMode == ViewMode.list)
                           _ViewModeChip(
@@ -498,12 +565,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
                         child: ElevatedButton(
                           onPressed: () {
                             HapticFeedback.mediumImpact();
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => const AddTaskSheet(),
-                            );
+                            _showAddTaskChoice();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Theme.of(context).colorScheme.surface,

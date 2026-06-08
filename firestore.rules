@@ -36,7 +36,7 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.email is string
         && (request.resource.data.createdAt is timestamp
-         || request.resource.data.createdAt == null); // Allow server timestamps
+         || request.resource.data.createdAt == null);
     }
 
     function isValidSubtask() {
@@ -49,10 +49,15 @@ service cloud.firestore {
         && request.resource.data.order is number;
     }
 
+    function isGroupMember(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser();
-      allow update: if isOwner(userId) && isValidUser();
+      allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
@@ -89,6 +94,35 @@ service cloud.firestore {
         && isValidSubtask();
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
+    }
+
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isGroupMember(groupId);
+      allow delete: if isSignedIn()
+        && resource.data.createdBy == request.auth.uid;
+
+      match /members/{memberId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow delete: if isSignedIn();
+        allow update: if isSignedIn();
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId);
+        allow update: if isGroupMember(groupId);
+        allow delete: if isGroupMember(groupId);
+
+        match /subtasks/{subtaskId} {
+          allow read: if isGroupMember(groupId);
+          allow create: if isGroupMember(groupId);
+          allow update: if isGroupMember(groupId);
+          allow delete: if isGroupMember(groupId);
+        }
+      }
     }
   }
 }

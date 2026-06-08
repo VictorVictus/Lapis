@@ -1,0 +1,249 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:to_do_app/models/task.dart';
+import 'package:to_do_app/models/subclasses/sub_task.dart';
+import 'package:to_do_app/models/subclasses/task_category.dart';
+
+class GroupTask {
+  final String id;
+  final String groupId;
+  String title;
+  TaskStatus status;
+  TaskPriority priority;
+  String? assignedTo;
+  final String createdBy;
+  String? completedBy;
+  DateTime? completedAt;
+  String? notes;
+  double order;
+  final DateTime createdAt;
+
+  GroupTask({
+    required this.id,
+    required this.groupId,
+    required this.title,
+    required this.createdBy,
+    required this.createdAt,
+    this.status = TaskStatus.undone,
+    this.priority = TaskPriority.none,
+    this.assignedTo,
+    this.completedBy,
+    this.completedAt,
+    this.notes,
+    this.order = 0,
+  });
+
+  factory GroupTask.fromMap(Map<String, dynamic> map, String id, {required String groupId}) {
+    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
+      if (raw is! int) return defaultIndex;
+      if (raw < 0 || raw >= values.length) return defaultIndex;
+      return raw;
+    }
+
+    return GroupTask(
+      id: id,
+      groupId: groupId,
+      title: map['title'] as String? ?? '',
+      status: TaskStatus.values[safeIndex(TaskStatus.values, map['status'], 0)],
+      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      assignedTo: map['assignedTo'] as String?,
+      createdBy: map['createdBy'] as String? ?? '',
+      completedBy: map['completedBy'] as String?,
+      completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+      notes: map['notes'] as String?,
+      order: (map['order'] as num?)?.toDouble() ?? 0,
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'groupId': groupId,
+      'title': title,
+      'status': status.index,
+      'priority': priority.index,
+      'assignedTo': assignedTo,
+      'createdBy': createdBy,
+      'completedBy': completedBy,
+      'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'notes': notes,
+      'order': order,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
+
+  Task toTask({String? groupName}) {
+    return Task(
+      id: id,
+      userId: createdBy,
+      title: title,
+      category: TaskCategory(id: 'group', name: 'Shared', color: 0xFF6C63FF),
+      createdAt: createdAt,
+      status: status,
+      priority: priority,
+      notes: notes,
+      order: order,
+      completedAt: completedAt,
+      completedBy: completedBy,
+      groupId: groupId,
+      groupName: groupName,
+    );
+  }
+
+  GroupTask copyWith({
+    String? title,
+    TaskStatus? status,
+    TaskPriority? priority,
+    String? assignedTo,
+    String? completedBy,
+    DateTime? completedAt,
+    String? notes,
+    double? order,
+  }) {
+    return GroupTask(
+      id: id,
+      groupId: groupId,
+      title: title ?? this.title,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      assignedTo: assignedTo ?? this.assignedTo,
+      createdBy: createdBy,
+      completedBy: completedBy ?? this.completedBy,
+      completedAt: completedAt ?? this.completedAt,
+      notes: notes ?? this.notes,
+      order: order ?? this.order,
+      createdAt: createdAt,
+    );
+  }
+}
+
+class GroupSubTask {
+  final String id;
+  final String groupTaskId;
+  String title;
+  bool isDone;
+  String? doneBy;
+  int order;
+  TaskPriority priority;
+  DateTime? scheduledAt;
+  DateTime? deadline;
+  String? notes;
+
+  GroupSubTask({
+    required this.id,
+    required this.groupTaskId,
+    required this.title,
+    this.isDone = false,
+    this.doneBy,
+    this.order = 0,
+    this.priority = TaskPriority.none,
+    this.scheduledAt,
+    this.deadline,
+    this.notes,
+  });
+
+  factory GroupSubTask.fromMap(Map<String, dynamic> map, String id, {required String groupTaskId}) {
+    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
+      if (raw is! int) return defaultIndex;
+      if (raw < 0 || raw >= values.length) return defaultIndex;
+      return raw;
+    }
+
+    return GroupSubTask(
+      id: id,
+      groupTaskId: groupTaskId,
+      title: map['title'] as String? ?? '',
+      isDone: map['isDone'] as bool? ?? false,
+      doneBy: map['doneBy'] as String?,
+      order: (map['order'] as num?)?.toInt() ?? 0,
+      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
+      deadline: (map['deadline'] as Timestamp?)?.toDate(),
+      notes: map['notes'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'groupTaskId': groupTaskId,
+      'title': title,
+      'isDone': isDone,
+      'doneBy': doneBy,
+      'order': order,
+      'priority': priority.index,
+      'scheduledAt': scheduledAt != null ? Timestamp.fromDate(scheduledAt!) : null,
+      'deadline': deadline != null ? Timestamp.fromDate(deadline!) : null,
+      'notes': notes,
+    };
+  }
+
+  GroupSubTask copyWith({
+    String? title,
+    bool? isDone,
+    String? doneBy,
+    int? order,
+    TaskPriority? priority,
+    DateTime? scheduledAt,
+    DateTime? deadline,
+    String? notes,
+  }) {
+    return GroupSubTask(
+      id: id,
+      groupTaskId: groupTaskId,
+      title: title ?? this.title,
+      isDone: isDone ?? this.isDone,
+      doneBy: doneBy ?? this.doneBy,
+      order: order ?? this.order,
+      priority: priority ?? this.priority,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      deadline: deadline ?? this.deadline,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  SubTask toSubTask() {
+    return SubTask(
+      id: id,
+      taskId: groupTaskId,
+      userId: '',
+      title: title,
+      isDone: isDone,
+      order: order,
+      priority: priority,
+      scheduledAt: scheduledAt,
+      deadline: deadline,
+      notes: notes,
+    );
+  }
+
+  factory GroupSubTask.fromSubTask(SubTask subTask, {required String groupTaskId}) {
+    return GroupSubTask(
+      id: subTask.id,
+      groupTaskId: groupTaskId,
+      title: subTask.title,
+      isDone: subTask.isDone,
+      order: subTask.order,
+      priority: subTask.priority,
+      scheduledAt: subTask.scheduledAt,
+      deadline: subTask.deadline,
+      notes: subTask.notes,
+    );
+  }
+}
+
+extension TaskGroupConversion on Task {
+  GroupTask toGroupTask() {
+    return GroupTask(
+      id: id,
+      groupId: groupId ?? '',
+      title: title,
+      createdBy: userId,
+      createdAt: createdAt,
+      status: status,
+      priority: priority,
+      completedBy: completedBy,
+      completedAt: completedAt,
+      notes: notes,
+      order: order,
+    );
+  }
+}

@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/subclasses/recurrent_configuration.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:to_do_app/models/task.dart';
+import 'package:to_do_app/models/subclasses/group_task.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/services/task_service.dart';
+import 'package:to_do_app/services/group_service.dart';
 import 'package:flutter/foundation.dart';
 
 class AddTaskState {
@@ -22,6 +24,7 @@ class AddTaskState {
   final DateTime? deadline;
   final bool isSaving;
   final Task? existingTask;
+  final String? groupId;
 
   bool get isEditing => existingTask != null;
 
@@ -40,6 +43,7 @@ class AddTaskState {
     this.deadline,
     this.isSaving = false,
     this.existingTask,
+    this.groupId,
   });
 
   AddTaskState copyWith({
@@ -57,6 +61,7 @@ class AddTaskState {
     DateTime? deadline,
     bool? isSaving,
     Task? existingTask,
+    String? groupId,
   }) {
     return AddTaskState(
       title: title ?? this.title,
@@ -73,6 +78,7 @@ class AddTaskState {
       deadline: deadline ?? this.deadline,
       isSaving: isSaving ?? this.isSaving,
       existingTask: existingTask ?? this.existingTask,
+      groupId: groupId ?? this.groupId,
     );
   }
 }
@@ -100,6 +106,7 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
       hasDeadline: task.deadline != null,
       deadline: task.deadline,
       existingTask: task,
+      groupId: task.groupId,
     );
   }
 
@@ -121,6 +128,7 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
     state = state.copyWith(hasDeadline: value, deadline: newDeadline);
   }
   void updateDeadline(DateTime date) => state = state.copyWith(deadline: date);
+  void setGroupId(String groupId) => state = state.copyWith(groupId: groupId);
 
   Future<bool> saveTask() async {
     if (state.title.trim().isEmpty) return false;
@@ -154,7 +162,13 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
       }
 
       final existing = state.existingTask;
-      final taskId = existing?.id ?? FirebaseFirestore.instance.collection('tasks').doc().id;
+      final groupId = state.groupId;
+      final isGroupTask = groupId != null;
+
+      final taskId = existing?.id ??
+          (isGroupTask
+              ? ref.read(groupServiceProvider).generateTaskId(groupId)
+              : FirebaseFirestore.instance.collection('tasks').doc().id);
 
       final taskOrder = existing?.order ?? DateTime.now().millisecondsSinceEpoch.toDouble();
 
@@ -172,12 +186,22 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
         deadline: state.hasDeadline ? state.deadline : null,
         recurrentConfig: recurrentConfig,
         notes: state.notes.trim().isEmpty ? null : state.notes.trim(),
+        groupId: groupId,
       );
 
-      if (existing != null) {
-        await ref.read(taskServiceProvider).updateTask(task);
+      if (isGroupTask) {
+        final groupService = ref.read(groupServiceProvider);
+        if (existing != null) {
+          await groupService.updateTask(task.toGroupTask());
+        } else {
+          await groupService.createTask(task.toGroupTask());
+        }
       } else {
-        await ref.read(taskServiceProvider).createTask(task);
+        if (existing != null) {
+          await ref.read(taskServiceProvider).updateTask(task);
+        } else {
+          await ref.read(taskServiceProvider).createTask(task);
+        }
       }
       return true;
     } catch (e) {

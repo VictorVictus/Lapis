@@ -14,12 +14,12 @@ import 'package:to_do_app/widgets/add_task/category_dialog.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/providers/categories_provider.dart';
-import 'package:to_do_app/widgets/add_task/subtask_list.dart';
 
 class AddTaskSheet extends ConsumerStatefulWidget {
   final Task? existingTask;
+  final String? groupId;
 
-  const AddTaskSheet({super.key, this.existingTask});
+  const AddTaskSheet({super.key, this.existingTask, this.groupId});
 
   @override
   ConsumerState<AddTaskSheet> createState() => _AddTaskSheetState();
@@ -31,9 +31,16 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initialized && widget.existingTask != null) {
-      ref.read(addTaskProvider.notifier).initForEdit(widget.existingTask!);
+    if (!_initialized) {
       _initialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.existingTask != null) {
+          ref.read(addTaskProvider.notifier).initForEdit(widget.existingTask!);
+        } else if (widget.groupId != null) {
+          ref.read(addTaskProvider.notifier).setGroupId(widget.groupId!);
+        }
+      });
     }
   }
 
@@ -46,7 +53,11 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
     ref.listen(allCategoriesProvider, (previous, next) {
       if (next.isEmpty) return;
       if (ref.read(addTaskProvider).selectedCategory == null) {
-        addTaskNotifier.updateCategory(next.first);
+        Future.microtask(() {
+          if (mounted) {
+            addTaskNotifier.updateCategory(next.first);
+          }
+        });
       }
     });
 
@@ -111,13 +122,6 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
               const SizedBox(height: 12),
               const TaskNotesInput(),
               const SizedBox(height: 30),
-              if (addTaskState.isEditing)
-                Column(
-                  children: [
-                    SubtaskList(taskId: addTaskState.existingTask!.id),
-                    const SizedBox(height: 30),
-                  ],
-                ),
               RecurrenceConfigurator(
                 isRecurrent: addTaskState.isRecurrent,
                 onRecurrenceToggle: (val) => addTaskNotifier.updateIsRecurrent(val),
