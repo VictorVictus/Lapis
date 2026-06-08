@@ -9,6 +9,9 @@ class GroupTask {
   String title;
   TaskStatus status;
   TaskPriority priority;
+  TaskCategory category;
+  DateTime? scheduledAt;
+  DateTime? deadline;
   String? assignedTo;
   final String createdBy;
   String? completedBy;
@@ -25,12 +28,15 @@ class GroupTask {
     required this.createdAt,
     this.status = TaskStatus.undone,
     this.priority = TaskPriority.none,
+    TaskCategory? category,
+    this.scheduledAt,
+    this.deadline,
     this.assignedTo,
     this.completedBy,
     this.completedAt,
     this.notes,
     this.order = 0,
-  });
+  }) : category = category ?? TaskCategory(id: 'uncategorized', name: 'General', color: 0xFF9E9E9E);
 
   factory GroupTask.fromMap(Map<String, dynamic> map, String id, {required String groupId}) {
     int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
@@ -45,6 +51,11 @@ class GroupTask {
       title: map['title'] as String? ?? '',
       status: TaskStatus.values[safeIndex(TaskStatus.values, map['status'], 0)],
       priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      category: map['category'] is Map<String, dynamic>
+          ? TaskCategory.fromMap(map['category'] as Map<String, dynamic>)
+          : TaskCategory(id: 'uncategorized', name: 'General', color: 0xFF9E9E9E),
+      scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
+      deadline: (map['deadline'] as Timestamp?)?.toDate(),
       assignedTo: map['assignedTo'] as String?,
       createdBy: map['createdBy'] as String? ?? '',
       completedBy: map['completedBy'] as String?,
@@ -61,6 +72,9 @@ class GroupTask {
       'title': title,
       'status': status.index,
       'priority': priority.index,
+      'category': category.toMap(),
+      'scheduledAt': scheduledAt != null ? Timestamp.fromDate(scheduledAt!) : null,
+      'deadline': deadline != null ? Timestamp.fromDate(deadline!) : null,
       'assignedTo': assignedTo,
       'createdBy': createdBy,
       'completedBy': completedBy,
@@ -76,10 +90,12 @@ class GroupTask {
       id: id,
       userId: createdBy,
       title: title,
-      category: TaskCategory(id: 'group', name: 'Shared', color: 0xFF6C63FF),
+      category: category,
       createdAt: createdAt,
       status: status,
       priority: priority,
+      scheduledAt: scheduledAt,
+      deadline: deadline,
       notes: notes,
       order: order,
       completedAt: completedAt,
@@ -93,6 +109,9 @@ class GroupTask {
     String? title,
     TaskStatus? status,
     TaskPriority? priority,
+    TaskCategory? category,
+    DateTime? scheduledAt,
+    DateTime? deadline,
     String? assignedTo,
     String? completedBy,
     DateTime? completedAt,
@@ -105,6 +124,9 @@ class GroupTask {
       title: title ?? this.title,
       status: status ?? this.status,
       priority: priority ?? this.priority,
+      category: category ?? this.category,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      deadline: deadline ?? this.deadline,
       assignedTo: assignedTo ?? this.assignedTo,
       createdBy: createdBy,
       completedBy: completedBy ?? this.completedBy,
@@ -240,6 +262,9 @@ extension TaskGroupConversion on Task {
       createdAt: createdAt,
       status: status,
       priority: priority,
+      category: category,
+      scheduledAt: scheduledAt,
+      deadline: deadline,
       completedBy: completedBy,
       completedAt: completedAt,
       notes: notes,

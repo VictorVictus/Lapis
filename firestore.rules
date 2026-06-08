@@ -49,6 +49,24 @@ service cloud.firestore {
         && request.resource.data.order is number;
     }
 
+    function isValidGroupTask() {
+      return request.resource.data.keys().hasAll(['title', 'status', 'priority', 'order', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.status is number
+        && request.resource.data.priority is number
+        && request.resource.data.order is number
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    function isValidGroupSubTask() {
+      return request.resource.data.keys().hasAll(['title', 'isDone', 'order'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.isDone is bool
+        && request.resource.data.order is number;
+    }
+
     function isGroupMember(groupId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
@@ -78,8 +96,7 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && isValidCategory();
       allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid
-        && isValidCategory();
+        && resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }
@@ -90,8 +107,17 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && isValidSubtask();
       allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid
-        && isValidSubtask();
+        && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /focus_sessions/{sessionId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn()
         && resource.data.userId == request.auth.uid;
     }
@@ -105,20 +131,25 @@ service cloud.firestore {
 
       match /members/{memberId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn();
-        allow delete: if isSignedIn();
-        allow update: if isSignedIn();
+        allow create: if isSignedIn()
+          && memberId == request.auth.uid;
+        allow update: if isSignedIn()
+          && memberId == request.auth.uid;
+        allow delete: if isSignedIn()
+          && memberId == request.auth.uid;
       }
 
       match /tasks/{taskId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId)
+          && isValidGroupTask();
         allow update: if isGroupMember(groupId);
         allow delete: if isGroupMember(groupId);
 
         match /subtasks/{subtaskId} {
           allow read: if isGroupMember(groupId);
-          allow create: if isGroupMember(groupId);
+          allow create: if isGroupMember(groupId)
+            && isValidGroupSubTask();
           allow update: if isGroupMember(groupId);
           allow delete: if isGroupMember(groupId);
         }

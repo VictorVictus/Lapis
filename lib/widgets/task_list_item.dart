@@ -1045,7 +1045,9 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                                 Navigator.pop(ctx);
                                 if (!context.mounted) return;
                                 final updated = widget.task.copyWith(pinned: !widget.task.pinned);
-                                await _routeUpdateTask(updated);
+                                try {
+                                  await _routeUpdateTask(updated);
+                                } catch (_) {}
                               },
                               child: Text(widget.task.pinned ? 'Unpin' : 'Pin'),
                             ),
@@ -1092,15 +1094,15 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                         children: [
                           Row(
                             children: [
-                              widget.task.groupId != null
-                                  ? _GroupAvatarLookup(groupId: widget.task.groupId!, color: Color(widget.task.category.color))
-                                  : GestureDetector(
+                              GestureDetector(
                                 onTap: () {
                                   HapticFeedback.mediumImpact();
                                   ref.read(dashboardProvider.notifier).toggleSelectionMode();
                                   ref.read(dashboardProvider.notifier).toggleTaskSelection(widget.task.id);
                                 },
-                                child: Container(
+                                child: widget.task.groupId != null
+                                    ? _GroupAvatarLookup(groupId: widget.task.groupId!, color: Color(widget.task.category.color))
+                                    : Container(
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
@@ -1253,7 +1255,9 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                   Navigator.pop(ctx);
                   if (!context.mounted) return;
                   final updated = widget.task.copyWith(pinned: !widget.task.pinned);
-                  await _routeUpdateTask(updated);
+                  try {
+                    await _routeUpdateTask(updated);
+                  } catch (_) {}
                 },
                 child: Text(widget.task.pinned ? 'Unpin' : 'Pin'),
               ),
@@ -1460,13 +1464,13 @@ class _GroupAvatars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final display = members.take(4).toList();
-    const avatarSize = 24.0;
-    const overlap = 8.0;
+    const avatarSize = 34.0;
+    const overlap = 6.0;
     final totalWidth = avatarSize + (display.length - 1) * (avatarSize - overlap);
 
     return SizedBox(
       width: totalWidth,
-      height: avatarSize,
+      height: avatarSize + 6,
       child: Stack(
         children: [
           for (int i = 0; i < display.length; i++)
@@ -1488,7 +1492,7 @@ class _GroupAvatars extends StatelessWidget {
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -1510,7 +1514,7 @@ class _GroupAvatars extends StatelessWidget {
                     '+${members.length - 4}',
                     style: TextStyle(
                       color: color,
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
