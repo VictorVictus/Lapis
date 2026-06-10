@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/models/task.dart';
-import 'package:to_do_app/models/subclasses/recurrent_configuration.dart';
+import 'package:to_do_app/core/recurrence_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/providers/task_provider.dart';
 import 'package:to_do_app/services/notification_service.dart';
@@ -52,44 +52,9 @@ class TaskService {
     });
   }
 
-  DateTime _computeNextRecurrence(Task task) {
-    final cfg = task.recurrentConfig!;
-    final from = task.scheduledAt ?? task.createdAt;
-
-    switch (cfg.frequency) {
-      case RecurrentFrequency.daily:
-        return from.add(Duration(days: cfg.interval));
-      case RecurrentFrequency.weekly:
-      if (cfg.weekdays != null && cfg.weekdays!.isNotEmpty) {
-        final weekdays = cfg.weekdays!;
-        DateTime candidate = DateTime(from.year, from.month, from.day).add(const Duration(days: 1));
-        for (int i = 0; i < 14; i++) {
-            if (weekdays.contains(_dayOfWeekIndex(candidate))) {
-              return candidate;
-            }
-            candidate = candidate.add(const Duration(days: 1));
-          }
-        }
-        return from.add(Duration(days: cfg.interval * 7));
-    case RecurrentFrequency.monthly:
-      final targetMonth = from.month + cfg.interval;
-      final year = from.year + (targetMonth - 1) ~/ 12;
-      final month = ((targetMonth - 1) % 12) + 1;
-      final daysInMonth = DateTime(year, month + 1, 0).day;
-      final day = from.day.clamp(1, daysInMonth);
-      return DateTime(year, month, day);
-      case RecurrentFrequency.custom:
-        return from.add(Duration(days: cfg.interval));
-    }
-  }
-
-  int _dayOfWeekIndex(DateTime d) {
-    return d.weekday; // DateTime.monday = 1 ... sunday = 7
-  }
-
   Future<void> _spawnNextRecurrence(Task task) async {
     try {
-      final nextDate = _computeNextRecurrence(task);
+      final nextDate = computeNextRecurrence(task);
       final nextTask = Task(
         id: _firestore.collection('tasks').doc().id,
         userId: task.userId,
