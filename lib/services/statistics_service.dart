@@ -56,6 +56,7 @@ class StatisticsService {
     final tasksSnapshot = await _firestore
         .collection('tasks')
         .where('userId', isEqualTo: userId)
+        .limit(500)
         .get();
 
     final tasks = tasksSnapshot.docs

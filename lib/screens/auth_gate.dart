@@ -5,13 +5,32 @@ import 'package:to_do_app/providers/auth_provider.dart';
 import 'package:to_do_app/screens/auth.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/screens/dashboard.dart';
+import 'package:to_do_app/widgets/onboarding_screen.dart';
 
 /// Routes between sign-in and the main app based on Firebase Auth session.
-class AuthGate extends ConsumerWidget {
+class AuthGate extends ConsumerStatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends ConsumerState<AuthGate> {
+  bool? _onboardingDone;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final done = await hasOnboardingBeenCompleted();
+    if (mounted) setState(() => _onboardingDone = done);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
 
     return authState.when(
@@ -20,6 +39,12 @@ class AuthGate extends ConsumerWidget {
       data: (user) {
         if (user == null) {
           return const Auth();
+        }
+        if (_onboardingDone == null) {
+          return const _AuthSplash();
+        }
+        if (_onboardingDone == false) {
+          return OnboardingScreen(next: Dashboard(user: user));
         }
         return Dashboard(user: user);
       },

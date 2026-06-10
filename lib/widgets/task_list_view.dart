@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/task.dart';
@@ -5,6 +6,8 @@ import 'package:to_do_app/widgets/task_list_item.dart';
 import 'package:to_do_app/widgets/skeleton_task_item.dart';
 import 'package:to_do_app/providers/dashboard_provider.dart';
 import 'package:to_do_app/providers/unified_task_provider.dart';
+import 'package:to_do_app/services/task_service.dart';
+import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/widgets/empty_state_widget.dart';
 import 'package:to_do_app/core/smart_filter_utils.dart';
 
@@ -101,9 +104,11 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           }
         }
 
+        final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
         return ListView(
           controller: _scrollController,
           children: [
+            if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
             for (final key in groupOrder)
               ExpansionTile(
                 initiallyExpanded: true,
@@ -139,11 +144,84 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
     );
   }
 
+  Future<void> _clearAllCompleted(List<Task> tasks) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Clear completed'),
+        content: Text('Delete all ${tasks.length} completed tasks?'),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear all'),
+          ),
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final taskService = ref.read(taskServiceProvider);
+    final groupService = ref.read(groupServiceProvider);
+    for (final task in tasks) {
+      try {
+        if (task.groupId != null) {
+          await groupService.deleteTask(task.groupId!, task.id);
+        } else {
+          await taskService.deleteTask(task.id, task.userId);
+        }
+      } catch (e) {
+        debugPrint('Error clearing task ${task.id}: $e');
+      }
+    }
+  }
+
   Widget _buildFlatList(List<Task> tasks) {
+    final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
     return ListView.builder(
       controller: _scrollController,
-      itemCount: tasks.length,
-      itemBuilder: (context, index) => _buildTaskItem(tasks[index]),
+      itemCount: tasks.length + (isDone && tasks.length >= 2 ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (isDone && tasks.length >= 2 && index == 0) {
+          return _buildClearAllHeader(tasks);
+        }
+        final taskIndex = isDone && tasks.length >= 2 ? index - 1 : index;
+        return _buildTaskItem(tasks[taskIndex]);
+      },
+    );
+  }
+
+  Widget _buildClearAllHeader(List<Task> tasks) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Row(
+        children: [
+          const Spacer(),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            onPressed: () => _clearAllCompleted(tasks),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete_sweep, size: 16, color: CupertinoColors.destructiveRed.withValues(alpha: 0.8)),
+                const SizedBox(width: 4),
+                Text(
+                  'Clear all (${tasks.length})',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.destructiveRed.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

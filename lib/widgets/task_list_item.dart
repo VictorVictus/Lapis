@@ -380,6 +380,18 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
     }
   }
 
+  bool get _isDone => widget.task.status == TaskStatus.fulfilled;
+
+  TextStyle _titleStyle({required Color color, required double fontSize}) {
+    return TextStyle(
+      color: _isDone ? color.withValues(alpha: 0.55) : color,
+      fontWeight: FontWeight.bold,
+      fontSize: fontSize,
+      decoration: _isDone ? TextDecoration.lineThrough : null,
+      decorationColor: color.withValues(alpha: 0.5),
+    );
+  }
+
   String? get _groupId => widget.task.groupId;
 
   Future<void> _routeUpdateTask(Task task) async {
@@ -1131,9 +1143,8 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                                   children: [
                                     Text(
                                       widget.task.title,
-                                      style: TextStyle(
+                                      style: _titleStyle(
                                         color: Color(widget.task.category.color),
-                                        fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -1317,11 +1328,7 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                 Expanded(
                   child: Text(
                     widget.task.title,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    style: _titleStyle(color: color, fontSize: 13),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1408,9 +1415,8 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
             Expanded(
               child: Text(
                 widget.task.title,
-                style: TextStyle(
+                style: _titleStyle(
                   color: Color(widget.task.category.color),
-                  fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
               ),

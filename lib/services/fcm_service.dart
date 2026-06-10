@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,9 +9,13 @@ final fcmServiceProvider = Provider<FcmService>((ref) => FcmService());
 
 class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  StreamSubscription? _messageSub;
+  StreamSubscription? _tokenSub;
 
   /// Initializes FCM: requests permission, gets token, sets up handlers.
   Future<void> initialize() async {
+    _messageSub?.cancel();
+    _tokenSub?.cancel();
     if (kIsWeb) return;
 
     final notifSettings = await _messaging.requestPermission(
@@ -64,7 +69,7 @@ class FcmService {
   }
 
   void _setupForegroundHandler() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _messageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('FCM foreground message: ${message.notification?.title}');
     });
   }
@@ -74,7 +79,7 @@ class FcmService {
   }
 
   void _setupTokenRefreshHandler() {
-    _messaging.onTokenRefresh.listen((newToken) async {
+    _tokenSub = _messaging.onTokenRefresh.listen((newToken) async {
       debugPrint('FCM token refreshed: $newToken');
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
