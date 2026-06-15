@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="120dp"
+    android:viewportWidth="200"
+    android:viewportHeight="120">
+
+  <!-- Dark widget background, rounded corners -->
+  <path
+      android:pathData="M12,0h176a12,12 0 0,1 12,12v96a12,12 0 0,1 -12,12h-176a12,12 0 0,1 -12,-12v-96a12,12 0 0,1 12,-12z"
+      android:fillColor="#FF0D0D1A"/>
+
+  <!-- Header "Today" bar -->
+  <path
+      android:pathData="M16,12h168a4,4 0 0,1 4,4v8a4,4 0 0,1 -4,4h-168a4,4 0 0,1 -4,-4v-8a4,4 0 0,1 4,-4z"
+      android:fillColor="#1AFFFFFF"/>
+
+  <!-- Task card 1 background -->
+  <path
+      android:pathData="M18,38h164a6,6 0 0,1 6,6v22a6,6 0 0,1 -6,6h-164a6,6 0 0,1 -6,-6v-22a6,6 0 0,1 6,-6z"
+      android:fillColor="#FF16161F"/>
+
+  <!-- Priority strip 1 (red, left edge of card 1) -->
+  <path
+      android:pathData="M12,38h4v34h-4a6,6 0 0,1 -6,-6v-22a6,6 0 0,1 6,-6z"
+      android:fillColor="#FFFF453A"/>
+
+  <!-- Title line 1 -->
+  <path
+      android:pathData="M24,48h90a2,2 0 0,1 2,2v4a2,2 0 0,1 -2,2h-90a2,2 0 0,1 -2,-2v-4a2,2 0 0,1 2,-2z"
+      android:fillColor="#FFFFFFFF"/>
+
+  <!-- Category line 1 -->
+  <path
+      android:pathData="M24,60h60a2,2 0 0,1 2,2v2a2,2 0 0,1 -2,2h-60a2,2 0 0,1 -2,-2v-2a2,2 0 0,1 2,-2z"
+      android:fillColor="#FF8E8E93"/>
+
+  <!-- Task card 2 background -->
+  <path
+      android:pathData="M18,78h164a6,6 0 0,1 6,6v22a6,6 0 0,1 -6,6h-164a6,6 0 0,1 -6,-6v-22a6,6 0 0,1 6,-6z"
+      android:fillColor="#FF16161F"/>
+
+  <!-- Priority strip 2 (green, left edge of card 2) -->
+  <path
+      android:pathData="M12,78h4v34h-4a6,6 0 0,1 -6,-6v-22a6,6 0 0,1 6,-6z"
+      android:fillColor="#FF30D158"/>
+
+  <!-- Title line 2 -->
+  <path
+      android:pathData="M24,88h80a2,2 0 0,1 2,2v4a2,2 0 0,1 -2,2h-80a2,2 0 0,1 -2,-2v-4a2,2 0 0,1 2,-2z"
+      android:fillColor="#FFFFFFFF"/>
+
+  <!-- Category line 2 -->
+  <path
+      android:pathData="M24,100h50a2,2 0 0,1 2,2v2a2,2 0 0,1 -2,2h-50a2,2 0 0,1 -2,-2v-2a2,2 0 0,1 2,-2z"
+      android:fillColor="#FF8E8E93"/>
+</vector>

@@ -30,7 +30,7 @@ class NotificationService {
     }
 
     // 2. Android Settings
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
 
     // 3. iOS Settings
     const DarwinInitializationSettings darwinSettings = DarwinInitializationSettings(
@@ -116,10 +116,25 @@ Future<void> requestPermissions() async {
     // Generate a unique ID from the task ID (hash)
     final int notificationId = task.id.hashCode.abs();
 
+    final _titles = [
+      '${task.title}',
+      'Time for: ${task.title}',
+      'Heads up: ${task.title}',
+    ];
+    final _bodies = task.notes?.isNotEmpty == true
+        ? [task.notes!]
+        : [
+            'This task is waiting for you.',
+            'One to check off your list.',
+            'Scheduled for now — go for it!',
+          ];
+    final title = _titles[notificationId % _titles.length];
+    final body = _bodies[notificationId % _bodies.length];
+
     await _notificationsPlugin.zonedSchedule(
       notificationId,
-      'Reminder: ${task.title}',
-      task.notes?.isNotEmpty == true ? task.notes : 'You have a task scheduled now!',
+      title,
+      body,
       tz.TZDateTime.from(task.scheduledAt!, tz.local),
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

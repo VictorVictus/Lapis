@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'package:to_do_app/services/fcm_service.dart';
 import 'package:to_do_app/services/notification_service.dart';
 import 'package:to_do_app/services/share_service.dart';
+import 'package:to_do_app/services/widget_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,8 @@ void main() async {
 
   ShareService.init();
 
+  await WidgetDataService.initialize();
+
   if (kIsWeb) {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: false,
@@ -58,3 +61,4 @@ void main() async {
 
   runApp(const ProviderScope(child: App()));
 }
+

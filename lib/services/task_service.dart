@@ -6,6 +6,7 @@ import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/core/recurrence_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/providers/task_provider.dart';
+import 'package:to_do_app/services/widget_data_service.dart';
 import 'package:to_do_app/services/notification_service.dart';
 import 'package:to_do_app/services/sync_coordinator.dart';
 
@@ -34,6 +35,7 @@ class TaskService {
       await docRef.set(task.toMap());
 
       unawaited(_scheduleNotificationUnsafe(task));
+      unawaited(WidgetDataService.updateTodayTasks(task.userId));
       _ref.invalidate(taskCountsProvider(task.userId));
     });
   }
@@ -48,6 +50,7 @@ class TaskService {
       }
 
       unawaited(_scheduleNotificationUnsafe(task));
+      unawaited(WidgetDataService.updateTodayTasks(task.userId));
       _ref.invalidate(taskCountsProvider(task.userId));
     });
   }
@@ -83,6 +86,7 @@ class TaskService {
       await docRef.delete();
 
       unawaited(NotificationService().cancelNotification(taskId));
+      unawaited(WidgetDataService.updateTodayTasks(userId));
       _ref.invalidate(taskCountsProvider(userId));
     });
   }
@@ -140,3 +144,4 @@ class TaskService {
     };
   }
 }
+

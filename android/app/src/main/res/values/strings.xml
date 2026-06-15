@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Lapis</string>
     <string name="app_description">Lapis - To-do Task Manager</string>
+    <string name="widget_name">Lapis Tasks</string>
+    <string name="widget_desc">Today\'s tasks with priority and category</string>
 </resources>

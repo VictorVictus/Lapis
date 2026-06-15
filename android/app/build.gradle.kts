@@ -7,6 +7,7 @@ plugins {
     id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -24,6 +25,7 @@ val isCiBuild = System.getenv("CI") == "true"
 android {
     namespace = "app.lapis.todo"
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -37,6 +39,10 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     kotlinOptions {
@@ -89,8 +95,10 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("androidx.glance:glance-appwidget:1.1.1")
 }
 
 flutter {
     source = "../.."
 }
+

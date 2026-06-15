@@ -32,6 +32,7 @@ import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/widgets/notification_permission_dialog.dart';
 import 'package:to_do_app/widgets/screen_pinning_dialog.dart';
 import 'package:to_do_app/widgets/weekly_review_dialog.dart';
+import 'package:to_do_app/services/widget_data_service.dart';
 
 class Dashboard extends ConsumerStatefulWidget {
   final User user;
@@ -55,6 +56,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _showScreenPinningDialog());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkWeeklyReview());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkSharedText());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWidgetData());
     _shareSubscription = ShareService.onShared.stream.listen((text) {
       _openAddTaskSheetWithText(text);
     });
@@ -78,6 +80,10 @@ class _DashboardState extends ConsumerState<Dashboard> {
   Future<void> _showScreenPinningDialog() async {
     if (!mounted) return;
     await showScreenPinningDialogIfNeeded(context);
+  }
+
+  Future<void> _refreshWidgetData() async {
+    await WidgetDataService.updateTodayTasks(widget.user.uid);
   }
 
   Future<void> _checkWeeklyReview() async {
@@ -1109,3 +1115,5 @@ class _ViewModeChip extends StatelessWidget {
     );
   }
 }
+
+
