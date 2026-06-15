@@ -19,6 +19,7 @@ class GroupTask {
   String? notes;
   double order;
   final DateTime createdAt;
+  List<String> labelIds;
 
   GroupTask({
     required this.id,
@@ -36,6 +37,7 @@ class GroupTask {
     this.completedAt,
     this.notes,
     this.order = 0,
+    this.labelIds = const [],
   }) : category = category ?? TaskCategory(id: 'uncategorized', name: 'General', color: 0xFF9E9E9E);
 
   factory GroupTask.fromMap(Map<String, dynamic> map, String id, {required String groupId}) {
@@ -63,6 +65,7 @@ class GroupTask {
       notes: map['notes'] as String?,
       order: (map['order'] as num?)?.toDouble() ?? 0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      labelIds: (map['labelIds'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 
@@ -82,6 +85,7 @@ class GroupTask {
       'notes': notes,
       'order': order,
       'createdAt': Timestamp.fromDate(createdAt),
+      'labelIds': labelIds,
     };
   }
 
@@ -102,6 +106,8 @@ class GroupTask {
       completedBy: completedBy,
       groupId: groupId,
       groupName: groupName,
+      assignedTo: assignedTo,
+      labelIds: labelIds,
     );
   }
 
@@ -117,6 +123,7 @@ class GroupTask {
     DateTime? completedAt,
     String? notes,
     double? order,
+    List<String>? labelIds,
   }) {
     return GroupTask(
       id: id,
@@ -134,6 +141,7 @@ class GroupTask {
       notes: notes ?? this.notes,
       order: order ?? this.order,
       createdAt: createdAt,
+      labelIds: labelIds ?? this.labelIds,
     );
   }
 }
@@ -269,6 +277,8 @@ extension TaskGroupConversion on Task {
       completedAt: completedAt,
       notes: notes,
       order: order,
+      assignedTo: assignedTo,
+      labelIds: labelIds,
     );
   }
 }

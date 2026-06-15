@@ -13,11 +13,13 @@ Color _saturate(Color c) =>
 class KanbanView extends ConsumerStatefulWidget {
   final String userId;
   final String userInitial;
+  final String? groupId;
 
   const KanbanView({
     super.key,
     required this.userId,
     this.userInitial = '?',
+    this.groupId,
   });
 
   @override
@@ -71,15 +73,18 @@ class _KanbanViewState extends ConsumerState<KanbanView>
 
     return tasksAsync.when(
       data: (allTasks) {
-        final active = allTasks
+        final filtered = widget.groupId != null
+            ? allTasks.where((t) => t.groupId == widget.groupId).toList()
+            : allTasks;
+        final active = filtered
             .where((t) => t.status == TaskStatus.undone && !t.isArchived)
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));
-        final inProgress = allTasks
+        final inProgress = filtered
             .where((t) => t.status == TaskStatus.inProgress && !t.isArchived)
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));
-        final done = allTasks
+        final done = filtered
             .where((t) => t.status == TaskStatus.fulfilled && !t.isArchived)
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));

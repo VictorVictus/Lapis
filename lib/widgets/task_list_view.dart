@@ -15,12 +15,14 @@ class TaskListView extends ConsumerStatefulWidget {
   final String userId;
   final int selectedIndex;
   final String userInitial;
+  final String? labelFilterId;
 
   const TaskListView({
     super.key,
     required this.userId,
     required this.selectedIndex,
     this.userInitial = '?',
+    this.labelFilterId,
   });
 
   @override
@@ -56,7 +58,8 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
               task.title.toLowerCase().contains(query) ||
               (task.notes != null && task.notes!.toLowerCase().contains(query));
           final matchesSmart = _matchesSmartFilter(task, smartFilter);
-          return matchesSearch && matchesSmart;
+          final matchesLabel = widget.labelFilterId == null || task.labelIds.contains(widget.labelFilterId);
+          return matchesSearch && matchesSmart && matchesLabel;
         }).toList()
           ..sort((a, b) {
             if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
@@ -77,40 +80,39 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
             }
           });
 
-        if (tasks.isEmpty) {
-          return const EmptyStateWidget();
-        }
-
         final groupBy = ref.watch(dashboardProvider.select((s) => s.groupBy));
-        if (groupBy == GroupBy.none) {
-          return _buildFlatList(tasks);
-        }
 
-        final Map<String, List<Task>> groups = {};
-        final List<String> groupOrder = [];
-        if (groupBy == GroupBy.category) {
-          for (final task in tasks) {
-            final key = task.category.name;
-            groups.putIfAbsent(key, () => []);
-            if (!groupOrder.contains(key)) groupOrder.add(key);
-            groups[key]!.add(task);
-          }
+        Widget content;
+        if (tasks.isEmpty) {
+          content = const EmptyStateWidget();
+        } else if (groupBy == GroupBy.none) {
+          content = _buildFlatList(tasks);
         } else {
-          for (final task in tasks) {
-            final key = task.priority.displayName;
-            groups.putIfAbsent(key, () => []);
-            if (!groupOrder.contains(key)) groupOrder.add(key);
-            groups[key]!.add(task);
+          final Map<String, List<Task>> groups = {};
+          final List<String> groupOrder = [];
+          if (groupBy == GroupBy.category) {
+            for (final task in tasks) {
+              final key = task.category.name;
+              groups.putIfAbsent(key, () => []);
+              if (!groupOrder.contains(key)) groupOrder.add(key);
+              groups[key]!.add(task);
+            }
+          } else {
+            for (final task in tasks) {
+              final key = task.priority.displayName;
+              groups.putIfAbsent(key, () => []);
+              if (!groupOrder.contains(key)) groupOrder.add(key);
+              groups[key]!.add(task);
+            }
           }
-        }
 
-        final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
-        return ListView(
-          controller: _scrollController,
-          children: [
-            if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
-            for (final key in groupOrder)
-              ExpansionTile(
+          final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
+          content = ListView(
+            controller: _scrollController,
+            children: [
+              if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
+              for (final key in groupOrder)
+                ExpansionTile(
                 initiallyExpanded: true,
                 title: Text(
                   '$key (${groups[key]!.length})',
@@ -123,8 +125,11 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
                   userInitial: widget.userInitial,
                 )).toList(),
               ),
-          ],
-        );
+            ],
+          );
+        }
+
+        return content;
       },
       loading: () => ListView.builder(
         itemCount: 4,

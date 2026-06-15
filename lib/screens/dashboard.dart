@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/user.dart';
+import 'package:to_do_app/models/subclasses/label.dart';
 import 'package:to_do_app/widgets/task_list_view.dart';
 import 'package:to_do_app/widgets/kanban_view.dart';
 import 'package:to_do_app/screens/schedule_page.dart';
@@ -19,11 +20,12 @@ import 'package:to_do_app/providers/sync_provider.dart';
 import 'package:to_do_app/providers/task_provider.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
 import 'package:to_do_app/providers/categories_provider.dart';
-import 'package:to_do_app/providers/smart_filters_provider.dart';
+import 'package:to_do_app/providers/label_providers.dart';
 import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/services/group_service.dart';
+import 'package:to_do_app/services/label_service.dart';
 import 'package:to_do_app/services/share_service.dart';
 import 'package:to_do_app/core/smart_filter_utils.dart';
 import 'package:to_do_app/theme/app_theme.dart';
@@ -42,6 +44,7 @@ class Dashboard extends ConsumerStatefulWidget {
 class _DashboardState extends ConsumerState<Dashboard> {
   late ConfettiController _confettiController;
   final _quickAddController = TextEditingController();
+  String? _labelFilterId;
   StreamSubscription? _shareSubscription;
 
   @override
@@ -406,23 +409,11 @@ class _DashboardState extends ConsumerState<Dashboard> {
 
                   if (dashboardState.viewMode == ViewMode.list) const SizedBox(height: 8),
                   if (dashboardState.viewMode == ViewMode.list)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _buildSmartChip('All', SmartFilter.all, controller),
-                                for (final filter in ref.watch(smartFiltersProvider))
-                                  _buildSmartChip(_filterLabel(filter), filter, controller),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        _buildFilterSettingsIcon(context),
-                      ],
+                    _LabelFilterRow(
+                      userId: displayUser.uid,
+                      labelFilterId: _labelFilterId,
+                      onLabelSelected: (id) => setState(() => _labelFilterId = id),
+                      onClearFilter: () => setState(() => _labelFilterId = null),
                     ),
                   if (dashboardState.viewMode == ViewMode.list) const SizedBox(height: 8),
                   
@@ -459,6 +450,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
                             userId: displayUser.uid,
                             selectedIndex: selectedIndex,
                             userInitial: displayUser.initial,
+                            labelFilterId: _labelFilterId,
                           ),
                   ),
 
@@ -683,88 +675,8 @@ class _DashboardState extends ConsumerState<Dashboard> {
     );
   }
 
-  String _filterLabel(SmartFilter filter) => switch (filter) {
-        SmartFilter.today => 'Today',
-        SmartFilter.thisWeek => 'Week',
-        SmartFilter.overdue => 'Overdue',
-        SmartFilter.highPriority => 'High',
-        SmartFilter.hasDeadline => 'Has deadline',
-        SmartFilter.noDeadline => 'No deadline',
-        SmartFilter.thisMonth => 'This month',
-        SmartFilter.recurring => 'Recurring',
-        SmartFilter.all => 'All',
-      };
-
   bool _matchesSmartFilter(Task task, SmartFilter filter) =>
       matchesSmartFilter(task, filter);
-
-  Widget _buildFilterSettingsIcon(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: _showFilterSettings,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: cs.surface.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(Icons.tune, color: cs.primary, size: 16),
-      ),
-    );
-  }
-
-  void _showFilterSettings() {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final enabled = Set<SmartFilter>.from(ref.read(smartFiltersProvider));
-        return StatefulBuilder(
-          builder: (context, setInnerState) => AlertDialog(
-            title: const Text('Quick Filters'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final filter in [
-                    SmartFilter.today,
-                    SmartFilter.thisWeek,
-                    SmartFilter.overdue,
-                    SmartFilter.highPriority,
-                    SmartFilter.hasDeadline,
-                    SmartFilter.noDeadline,
-                    SmartFilter.thisMonth,
-                    SmartFilter.recurring,
-                  ])
-                    CheckboxListTile(
-                      title: Text(_filterLabel(filter)),
-                      value: enabled.contains(filter),
-                      dense: true,
-                      onChanged: (_) {
-                        setInnerState(() {
-                          if (enabled.contains(filter)) {
-                            enabled.remove(filter);
-                          } else {
-                            enabled.add(filter);
-                          }
-                        });
-                        ref.read(smartFiltersProvider.notifier).toggle(filter);
-                      },
-                    ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Done'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   static IconData? _sortIcon(SortBy sortBy) => switch (sortBy) {
         SortBy.order => null,
@@ -779,22 +691,266 @@ class _DashboardState extends ConsumerState<Dashboard> {
         SortBy.priority => 'Priority',
         SortBy.created => 'Created',
       };
+}
 
-  Widget _buildSmartChip(String label, SmartFilter filter, DashboardNotifier controller) {
-    final current = ref.watch(dashboardProvider.select((s) => s.smartFilter));
-    final selected = current == filter;
-    final cs = Theme.of(context).colorScheme;
+class _LabelFilterRow extends ConsumerWidget {
+  final String userId;
+  final String? labelFilterId;
+  final ValueChanged<String?> onLabelSelected;
+  final VoidCallback onClearFilter;
+
+  const _LabelFilterRow({
+    required this.userId,
+    required this.labelFilterId,
+    required this.onLabelSelected,
+    required this.onClearFilter,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final labelsAsync = ref.watch(userLabelsProvider(userId));
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontSize: 12, color: selected ? cs.onPrimary : cs.onSurface)),
-        selected: selected,
-        selectedColor: cs.primary,
-        backgroundColor: cs.surface.withValues(alpha: 0.25),
-        side: BorderSide.none,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onSelected: (_) => controller.setSmartFilter(filter),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: labelsAsync.when(
+        data: (labels) {
+          final selectedLabel = labelFilterId != null
+              ? labels.where((l) => l.id == labelFilterId).firstOrNull
+              : null;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (selectedLabel != null)
+                  GestureDetector(
+                    onTap: onClearFilter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: Color(selectedLabel.color).withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Color(selectedLabel.color).withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8, height: 8,
+                            decoration: BoxDecoration(
+                              color: Color(selectedLabel.color),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            selectedLabel.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(selectedLabel.color),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.close, size: 12, color: Color(selectedLabel.color)),
+                        ],
+                      ),
+                    ),
+                  ),
+                _buildLabelsButton(context, ref, labels),
+              ],
+            ),
+          );
+        },
+        loading: () => _buildSingleLabelsButton(context, ref, const []),
+        error: (_, __) => _buildSingleLabelsButton(context, ref, const []),
       ),
+    );
+  }
+
+  Widget _buildLabelsButton(BuildContext context, WidgetRef ref, List<Label> labels) {
+    return GestureDetector(
+      onTap: () => _showLabelPicker(context, ref, labels),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.label_outline, size: 12, color: Colors.white60),
+            const SizedBox(width: 3),
+            Text(
+              'Labels',
+              style: TextStyle(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleLabelsButton(BuildContext context, WidgetRef ref, List<Label> labels) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          _buildLabelsButton(context, ref, labels),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateLabelDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    Color selectedColor = Colors.blue;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('New Label'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CupertinoTextField(
+                controller: nameController,
+                placeholder: 'Label name',
+                autofocus: true,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Colors.red, Colors.orange, Colors.amber, Colors.yellow,
+                  Colors.green, Colors.teal, Colors.cyan, Colors.blue,
+                  Colors.indigo, Colors.purple, Colors.pink, Colors.brown,
+                ].map((c) => GestureDetector(
+                  onTap: () => setDialogState(() => selectedColor = c),
+                  child: Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: selectedColor == c
+                          ? Border.all(color: Colors.white, width: 3)
+                          : null,
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty) return;
+                final id = LabelService().generateId(userId);
+                await LabelService().createLabel(Label(
+                  id: id,
+                  name: nameController.text.trim(),
+                  color: selectedColor.toARGB32(),
+                  userId: userId,
+                ));
+                ref.invalidate(userLabelsProvider(userId));
+                if (context.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLabelPicker(BuildContext context, WidgetRef ref, List<Label> labels) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(context).colorScheme;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text('Filter by label', style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface)),
+              ),
+              if (labels.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('No labels yet.', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6))),
+                ),
+              for (final label in labels)
+                ListTile(
+                  leading: Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(
+                      color: Color(label.color),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  title: Text(label.name, style: TextStyle(color: cs.onSurface)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (labelFilterId == label.id)
+                        Icon(Icons.check, color: cs.primary),
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, size: 18, color: cs.onSurface.withValues(alpha: 0.5)),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Delete Label'),
+                              content: Text('Delete "${label.name}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await LabelService().deleteLabel(userId, label.id);
+                            ref.invalidate(userLabelsProvider(userId));
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onLabelSelected(label.id);
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.add, color: cs.onSurface.withValues(alpha: 0.6)),
+                title: Text('Create new label', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCreateLabelDialog(context, ref);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

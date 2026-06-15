@@ -77,6 +77,13 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidUser();
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
+
+      match /labels/{labelId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
     }
 
     match /tasks/{taskId} {

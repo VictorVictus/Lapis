@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:to_do_app/services/notification_service.dart';
 
 final fcmServiceProvider = Provider<FcmService>((ref) => FcmService());
 
@@ -70,7 +71,13 @@ class FcmService {
 
   void _setupForegroundHandler() {
     _messageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('FCM foreground message: ${message.notification?.title}');
+      final notification = message.notification;
+      if (notification == null) return;
+      NotificationService().showNotification(
+        id: message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+        title: notification.title ?? '',
+        body: notification.body,
+      );
     });
   }
 

@@ -9,6 +9,7 @@ import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/widgets/group_create_dialog.dart';
 import 'package:to_do_app/widgets/join_group_sheet.dart';
+import 'package:to_do_app/screens/group_kanban_screen.dart';
 
 class GroupListScreen extends ConsumerWidget {
   const GroupListScreen({super.key});
@@ -284,9 +285,39 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                   loading: () => const SizedBox(height: 20),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Text('Kanban Board',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 14,
+                          )),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GroupKanbanScreen(
+                            groupId: widget.group.id,
+                            groupName: widget.group.name,
+                            userId: widget.userId,
+                            userInitial: widget.username.isNotEmpty
+                                ? widget.username[0].toUpperCase()
+                                : '?',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 if (widget.group.createdBy == widget.userId)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 4),
                     child: SizedBox(
                       width: double.infinity,
                       child: CupertinoButton(

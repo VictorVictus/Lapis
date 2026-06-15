@@ -18,6 +18,8 @@ import 'package:to_do_app/models/subclasses/sub_task.dart';
 import 'package:to_do_app/models/subclasses/group.dart';
 import 'package:to_do_app/models/subclasses/group_task.dart';
 import 'package:to_do_app/providers/group_members_cache_provider.dart';
+import 'package:to_do_app/providers/label_providers.dart';
+import 'package:to_do_app/models/subclasses/label.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/widgets/add_task/subtask_create_sheet.dart';
@@ -1112,44 +1114,74 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                                   ref.read(dashboardProvider.notifier).toggleSelectionMode();
                                   ref.read(dashboardProvider.notifier).toggleTaskSelection(widget.task.id);
                                 },
-                                child: widget.task.groupId != null
-                                    ? _GroupAvatarLookup(groupId: widget.task.groupId!, color: Color(widget.task.category.color))
-                                    : Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Color(widget.task.category.color).withValues(alpha: 0.2),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Color(widget.task.category.color),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      widget.userInitial,
-                                      style: TextStyle(
+                                child: widget.task.assignedTo != null
+                                    ? _AssignedMemberAvatar(
+                                        groupId: widget.task.groupId!,
+                                        assignedUid: widget.task.assignedTo!,
                                         color: Color(widget.task.category.color),
-                                        fontWeight: FontWeight.bold,
+                                      )
+                                    : widget.task.groupId != null
+                                        ? _GroupAvatarLookup(groupId: widget.task.groupId!, color: Color(widget.task.category.color))
+                                        : Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Color(widget.task.category.color).withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Color(widget.task.category.color),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          widget.userInitial,
+                                          style: TextStyle(
+                                            color: Color(widget.task.category.color),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.task.title,
-                                      style: _titleStyle(
-                                        color: Color(widget.task.category.color),
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    if (remaining != null)
+                                    children: [
                                       Text(
+                                        widget.task.title,
+                                        style: _titleStyle(
+                                          color: Color(widget.task.category.color),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      if (widget.task.assignedTo != null)
+                                        Consumer(
+                                          builder: (context, ref, _) {
+                                            final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                                            final cacheAsync = ref.watch(groupMembersCacheProvider(userId));
+                                            return cacheAsync.when(
+                                              data: (cache) {
+                                                final members = cache[widget.task.groupId] ?? [];
+                                                final member = members.where((m) => m.uid == widget.task.assignedTo).firstOrNull;
+                                                if (member == null) return const SizedBox.shrink();
+                                                return Text(
+                                                  'Assigned to ${member.username}',
+                                                  style: TextStyle(
+                                                    color: Color(widget.task.category.color).withValues(alpha: 0.6),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                );
+                                              },
+                                              loading: () => const SizedBox.shrink(),
+                                              error: (_, __) => const SizedBox.shrink(),
+                                            );
+                                          },
+                                        ),
+                                      if (remaining != null)
+                                        Text(
                                         remaining,
                                         style: TextStyle(
                                           color: widget.task.deadline != null && 
@@ -1168,9 +1200,44 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
                                           fontSize: 12,
                                         ),
                                       ),
-                                  ],
-                                ),
-                              ),
+                                    if (widget.task.labelIds.isNotEmpty)
+                                      Consumer(
+                                        builder: (context, ref, _) {
+                                          final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                                          final cache = ref.watch(labelsCacheProvider(userId));
+                                          final labels = widget.task.labelIds
+                                              .map((id) => cache[id])
+                                              .whereType<Label>()
+                                              .toList();
+                                          if (labels.isEmpty) return const SizedBox.shrink();
+                                          return Padding(
+                                            padding: const EdgeInsets.only(top: 6),
+                                            child: Wrap(
+                                              spacing: 4,
+                                              runSpacing: 2,
+                                              children: labels.map((l) => Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Color(l.color).withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Color(l.color).withValues(alpha: 0.3)),
+                                                ),
+                                                child: Text(
+                                                  l.name,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Color(l.color),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              )).toList(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                   ],
+                                 ),
+                               ),
                               GestureDetector(
                                 onTap: () {
                                   HapticFeedback.lightImpact();
@@ -1423,6 +1490,66 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AssignedMemberAvatar extends ConsumerWidget {
+  final String groupId;
+  final String assignedUid;
+  final Color color;
+
+  const _AssignedMemberAvatar({
+    required this.groupId,
+    required this.assignedUid,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final cacheAsync = ref.watch(groupMembersCacheProvider(userId));
+    return cacheAsync.when(
+      data: (cache) {
+        final members = cache[groupId] ?? [];
+        final member = members.where((m) => m.uid == assignedUid).firstOrNull;
+        final initial = member?.username.isNotEmpty == true
+            ? member!.username[0].toUpperCase()
+            : '?';
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.amber,
+              width: 2,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              initial,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Center(child: Icon(Icons.person, size: 20, color: color)),
+      ),
+      error: (_, __) => Container(
+        width: 40, height: 40,
+        child: Center(child: Icon(Icons.person, size: 20, color: color)),
       ),
     );
   }

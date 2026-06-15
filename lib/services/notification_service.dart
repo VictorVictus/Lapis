@@ -128,6 +128,32 @@ Future<void> requestPermissions() async {
     );
   }
 
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    String? body,
+    String? payload,
+  }) async {
+    if (kIsWeb) return;
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'group_tasks',
+      'Group Tasks',
+      channelDescription: 'Notifications for group task activity',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+    );
+    await _notificationsPlugin.show(id, title, body, details, payload: payload);
+  }
+
   Future<void> cancelNotification(String taskId) async {
     if (kIsWeb) return;
     final int notificationId = taskId.hashCode.abs();

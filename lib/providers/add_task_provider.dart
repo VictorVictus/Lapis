@@ -25,6 +25,8 @@ class AddTaskState {
   final bool isSaving;
   final Task? existingTask;
   final String? groupId;
+  final String? assignedTo;
+  final List<String> selectedLabelIds;
 
   bool get isEditing => existingTask != null;
 
@@ -44,6 +46,8 @@ class AddTaskState {
     this.isSaving = false,
     this.existingTask,
     this.groupId,
+    this.assignedTo,
+    this.selectedLabelIds = const [],
   });
 
   AddTaskState copyWith({
@@ -62,6 +66,8 @@ class AddTaskState {
     bool? isSaving,
     Task? existingTask,
     String? groupId,
+    String? assignedTo,
+    List<String>? selectedLabelIds,
   }) {
     return AddTaskState(
       title: title ?? this.title,
@@ -79,6 +85,8 @@ class AddTaskState {
       isSaving: isSaving ?? this.isSaving,
       existingTask: existingTask ?? this.existingTask,
       groupId: groupId ?? this.groupId,
+      assignedTo: assignedTo ?? this.assignedTo,
+      selectedLabelIds: selectedLabelIds ?? this.selectedLabelIds,
     );
   }
 }
@@ -107,6 +115,8 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
       deadline: task.deadline,
       existingTask: task,
       groupId: task.groupId,
+      assignedTo: task.assignedTo,
+      selectedLabelIds: task.labelIds,
     );
   }
 
@@ -129,6 +139,16 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
   }
   void updateDeadline(DateTime date) => state = state.copyWith(deadline: date);
   void setGroupId(String groupId) => state = state.copyWith(groupId: groupId);
+  void updateAssignedTo(String? uid) => state = state.copyWith(assignedTo: uid);
+  void toggleLabel(String labelId) {
+    final ids = List<String>.from(state.selectedLabelIds);
+    if (ids.contains(labelId)) {
+      ids.remove(labelId);
+    } else {
+      ids.add(labelId);
+    }
+    state = state.copyWith(selectedLabelIds: ids);
+  }
 
   Future<bool> saveTask() async {
     if (state.title.trim().isEmpty) return false;
@@ -187,6 +207,8 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
         recurrentConfig: recurrentConfig,
         notes: state.notes.trim().isEmpty ? null : state.notes.trim(),
         groupId: groupId,
+        assignedTo: state.assignedTo,
+        labelIds: state.selectedLabelIds,
       );
 
       if (isGroupTask) {

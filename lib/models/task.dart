@@ -44,6 +44,8 @@ class Task {
   String? groupId;
   String? groupName;
   String? completedBy;
+  String? assignedTo;
+  List<String> labelIds;
 
   Task({
     required this.id,
@@ -66,6 +68,8 @@ class Task {
     this.groupId,
     this.groupName,
     this.completedBy,
+    this.assignedTo,
+    this.labelIds = const [],
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String id) {
@@ -105,6 +109,8 @@ class Task {
       groupId: map['groupId'] as String?,
       groupName: map['groupName'] as String?,
       completedBy: map['completedBy'] as String?,
+      assignedTo: map['assignedTo'] as String?,
+      labelIds: (map['labelIds'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
 
@@ -129,6 +135,8 @@ class Task {
       'groupId': groupId,
       'groupName': groupName,
       'completedBy': completedBy,
+      'assignedTo': assignedTo,
+      'labelIds': labelIds,
     };
   }
 
@@ -150,6 +158,8 @@ class Task {
     String? groupId,
     String? groupName,
     String? completedBy,
+    String? assignedTo,
+    List<String>? labelIds,
   }) {
     return Task(
       id: id,
@@ -172,6 +182,8 @@ class Task {
       groupId: groupId ?? this.groupId,
       groupName: groupName ?? this.groupName,
       completedBy: completedBy ?? this.completedBy,
+      assignedTo: assignedTo ?? this.assignedTo,
+      labelIds: labelIds ?? this.labelIds,
     );
   }
 }

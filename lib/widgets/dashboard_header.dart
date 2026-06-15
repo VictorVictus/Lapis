@@ -336,5 +336,4 @@ class DashboardHeader extends ConsumerWidget {
       controller.dispose();
     }
   }
-
 }
