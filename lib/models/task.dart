@@ -1,3 +1,4 @@
+import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:to_do_app/models/subclasses/recurrent_configuration.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,6 +47,7 @@ class Task {
   String? completedBy;
   String? assignedTo;
   List<String> labelIds;
+  String? section;
 
   Task({
     required this.id,
@@ -70,15 +72,10 @@ class Task {
     this.completedBy,
     this.assignedTo,
     this.labelIds = const [],
+    this.section,
   });
 
   factory Task.fromMap(Map<String, dynamic> map, String id) {
-    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
-      if (raw is! int) return defaultIndex;
-      if (raw < 0 || raw >= values.length) return defaultIndex;
-      return raw;
-    }
-
     TaskCategory safeCategory(dynamic raw) {
       if (raw is Map<String, dynamic>) {
         return TaskCategory.fromMap(raw);
@@ -111,6 +108,7 @@ class Task {
       completedBy: map['completedBy'] as String?,
       assignedTo: map['assignedTo'] as String?,
       labelIds: (map['labelIds'] as List<dynamic>?)?.cast<String>() ?? [],
+      section: map['section'] as String?,
     );
   }
 
@@ -137,6 +135,7 @@ class Task {
       'completedBy': completedBy,
       'assignedTo': assignedTo,
       'labelIds': labelIds,
+      'section': section,
     };
   }
 
@@ -160,6 +159,7 @@ class Task {
     String? completedBy,
     String? assignedTo,
     List<String>? labelIds,
+    String? section,
   }) {
     return Task(
       id: id,
@@ -184,6 +184,7 @@ class Task {
       completedBy: completedBy ?? this.completedBy,
       assignedTo: assignedTo ?? this.assignedTo,
       labelIds: labelIds ?? this.labelIds,
+      section: section ?? this.section,
     );
   }
 }

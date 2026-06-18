@@ -1,3 +1,4 @@
+import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -27,12 +28,6 @@ class SubTask {
   });
 
   factory SubTask.fromMap(Map<String, dynamic> map, String id) {
-    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
-      if (raw is! int) return defaultIndex;
-      if (raw < 0 || raw >= values.length) return defaultIndex;
-      return raw;
-    }
-
     return SubTask(
       id: id,
       taskId: map['taskId'] as String? ?? '',

@@ -28,6 +28,23 @@ class FocusSession {
     );
   }
 
+  FocusSession copyWith({
+    String? userId,
+    String? taskId,
+    String? taskTitle,
+    int? durationSeconds,
+    DateTime? createdAt,
+  }) {
+    return FocusSession(
+      id: id,
+      userId: userId ?? this.userId,
+      taskId: taskId ?? this.taskId,
+      taskTitle: taskTitle ?? this.taskTitle,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,

@@ -18,6 +18,9 @@ import 'package:to_do_app/providers/categories_provider.dart';
 import 'package:to_do_app/providers/group_members_cache_provider.dart';
 import 'package:to_do_app/providers/label_providers.dart';
 import 'package:to_do_app/services/label_service.dart';
+import 'package:to_do_app/providers/sections_provider.dart';
+import 'package:to_do_app/services/section_service.dart';
+import 'package:to_do_app/models/subclasses/section.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AddTaskSheet extends ConsumerStatefulWidget {
@@ -115,6 +118,8 @@ class _AddTaskSheetState extends ConsumerState<AddTaskSheet> {
                   onSelected: (uid) => addTaskNotifier.updateAssignedTo(uid),
                 ),
               ],
+              const SizedBox(height: 20),
+              _SectionPicker(),
               const SizedBox(height: 20),
               _LabelPicker(),
               const SizedBox(height: 30),
@@ -429,6 +434,178 @@ class _AddLabelButton extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SectionPicker extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final sectionsAsync = ref.watch(userSectionsProvider(userId));
+    final selectedId = ref.watch(addTaskProvider.select((s) => s.selectedSection));
+    final notifier = ref.read(addTaskProvider.notifier);
+
+    return sectionsAsync.when(
+      data: (sections) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Section',
+              style: TextStyle(
+                fontSize: 13,
+                color: CupertinoColors.lightBackgroundGray.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _SectionChip(
+                    label: 'None',
+                    isSelected: selectedId == null,
+                    onTap: () => notifier.updateSection(null),
+                  ),
+                  const SizedBox(width: 8),
+                  ...sections.map((s) => _SectionChip(
+                    label: s.name,
+                    isSelected: selectedId == s.id,
+                    onTap: () => notifier.updateSection(s.id),
+                  )),
+                  _AddSectionButton(),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _SectionChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SectionChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected
+        ? CupertinoTheme.of(context).primaryColor
+        : CupertinoColors.systemGrey;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Icon(Icons.check, size: 12, color: color),
+              ),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddSectionButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () => _showCreateSectionDialog(context, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemGrey.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: CupertinoColors.systemGrey.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 14, color: CupertinoColors.systemGrey),
+            const SizedBox(width: 4),
+            Text(
+              'New',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCreateSectionDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Section'),
+        content: CupertinoTextField(
+          controller: nameController,
+          placeholder: 'Section name',
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              final service = ref.read(sectionServiceProvider);
+              final sections = ref.read(userSectionsProvider(userId)).asData?.value ?? [];
+              final section = Section(
+                id: service.generateId(userId),
+                name: name,
+                order: sections.length,
+                userId: userId,
+              );
+              await service.createSection(section);
+              ref.invalidate(userSectionsProvider(userId));
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
   }

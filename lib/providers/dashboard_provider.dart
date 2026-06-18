@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:async';
 
 enum ViewMode { list, kanban }
 
-enum GroupBy { none, category, priority }
+enum GroupBy { none, category, priority, section }
 
 enum SortBy { order, deadline, priority, created }
 
@@ -12,6 +11,7 @@ enum SmartFilter { all, today, thisWeek, overdue, highPriority, hasDeadline, noD
 class DashboardState {
   final int tabIndex;
   final String searchQuery;
+  final bool searchMode;
   final int celebrationTrigger;
   final ViewMode viewMode;
   final GroupBy groupBy;
@@ -23,6 +23,7 @@ class DashboardState {
   DashboardState({
     this.tabIndex = 0,
     this.searchQuery = '',
+    this.searchMode = false,
     this.celebrationTrigger = 0,
     this.viewMode = ViewMode.list,
     this.groupBy = GroupBy.none,
@@ -35,6 +36,7 @@ class DashboardState {
   DashboardState copyWith({
     int? tabIndex,
     String? searchQuery,
+    bool? searchMode,
     int? celebrationTrigger,
     ViewMode? viewMode,
     GroupBy? groupBy,
@@ -46,6 +48,7 @@ class DashboardState {
     return DashboardState(
       tabIndex: tabIndex ?? this.tabIndex,
       searchQuery: searchQuery ?? this.searchQuery,
+      searchMode: searchMode ?? this.searchMode,
       celebrationTrigger: celebrationTrigger ?? this.celebrationTrigger,
       viewMode: viewMode ?? this.viewMode,
       groupBy: groupBy ?? this.groupBy,
@@ -58,11 +61,8 @@ class DashboardState {
 }
 
 class DashboardNotifier extends Notifier<DashboardState> {
-  Timer? _debounceTimer;
-
   @override
   DashboardState build() {
-    ref.onDispose(() => _debounceTimer?.cancel());
     return DashboardState();
   }
 
@@ -70,11 +70,12 @@ class DashboardNotifier extends Notifier<DashboardState> {
     state = state.copyWith(tabIndex: index);
   }
 
-  void onSearchChanged(String query) {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      state = state.copyWith(searchQuery: query);
-    });
+  void setSearchMode(bool enabled) {
+    state = state.copyWith(searchMode: enabled, searchQuery: enabled ? state.searchQuery : '');
+  }
+
+  void updateSearchQuery(String query) {
+    state = state.copyWith(searchQuery: query);
   }
 
   void triggerCelebration() {

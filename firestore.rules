@@ -84,6 +84,20 @@ service cloud.firestore {
         allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
       }
+
+      match /sections/{sectionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /kanbanColumns/{columnId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
     }
 
     match /tasks/{taskId} {

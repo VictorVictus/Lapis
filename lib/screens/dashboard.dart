@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,6 +44,7 @@ class Dashboard extends ConsumerStatefulWidget {
 class _DashboardState extends ConsumerState<Dashboard> {
   late ConfettiController _confettiController;
   final _quickAddController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String? _labelFilterId;
   StreamSubscription? _shareSubscription;
 
@@ -67,6 +67,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
     _shareSubscription?.cancel();
     _confettiController.dispose();
     _quickAddController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -464,38 +465,153 @@ class _DashboardState extends ConsumerState<Dashboard> {
 
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _ViewModeChip(
-                          icon: dashboardState.viewMode == ViewMode.kanban
-                              ? Icons.dashboard_outlined
-                              : Icons.view_list_outlined,
-                          label: dashboardState.viewMode == ViewMode.kanban
-                              ? 'Switch to List'
-                              : 'Switch to Kanban',
-                          onTap: () => ref.read(dashboardProvider.notifier).toggleViewMode(),
-                        ),
-                        const SizedBox(width: 8),
-                        _ViewModeChip(
-                          icon: Icons.calendar_month_outlined,
-                          label: 'Schedule',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SchedulePage(user: displayUser),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(width: 8),
-                        if (dashboardState.viewMode == ViewMode.list)
+                    child: SizedBox(
+                      height: 32,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
                           _ViewModeChip(
-                            icon: _sortIcon(dashboardState.sortBy) ?? Icons.swap_vert,
-                            label: _sortLabel(dashboardState.sortBy),
+                            icon: Icons.calendar_month_outlined,
+                            label: 'Schedule',
                             onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SchedulePage(user: displayUser),
+                                ),
+                              );
+                            },
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _ViewModeChip(
+                              icon: dashboardState.viewMode == ViewMode.kanban
+                                  ? Icons.dashboard_outlined
+                                  : Icons.view_list_outlined,
+                              label: dashboardState.viewMode == ViewMode.kanban
+                                  ? 'List'
+                                  : 'Kanban',
+                              onTap: () => ref.read(dashboardProvider.notifier).toggleViewMode(),
+                            ),
+                          ),
+                          if (dashboardState.viewMode == ViewMode.list)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: _ViewModeChip(
+                                icon: _groupIcon(dashboardState.groupBy),
+                                label: _groupLabel(dashboardState.groupBy),
+                                onTap: () {
+                                  final currentGroup = dashboardState.groupBy;
+                                  final groupOptions = GroupBy.values;
+                                  showCupertinoModalPopup(
+                                    context: context,
+                                    builder: (ctx) => CupertinoActionSheet(
+                                      title: const Text('Group by'),
+                                      actions: [
+                                        for (final g in groupOptions)
+                                          CupertinoActionSheetAction(
+                                            isDefaultAction: g == currentGroup,
+                                            onPressed: () {
+                                              Navigator.pop(ctx);
+                                              ref.read(dashboardProvider.notifier).setGroupBy(g);
+                                            },
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  _groupIcon(g),
+                                                  size: 18,
+                                                  color: g == currentGroup
+                                                      ? Theme.of(context).colorScheme.primary
+                                                      : null,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(_groupLabel(g)),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                      cancelButton: CupertinoActionSheetAction(
+                                        isDestructiveAction: true,
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Cancel'),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: CupertinoTextField(
+                            controller: _quickAddController,
+                            focusNode: dashboardState.searchMode ? _searchFocusNode : null,
+                            placeholder: dashboardState.searchMode ? 'Search tasks...' : 'Quick add...',
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                            onChanged: dashboardState.searchMode
+                                ? (val) => ref.read(dashboardProvider.notifier).updateSearchQuery(val)
+                                : null,
+                            onSubmitted: dashboardState.searchMode ? null : (_) => _quickAddTask(),
+                            suffix: dashboardState.searchMode && _quickAddController.text.isNotEmpty
+                                ? GestureDetector(
+                                    onTap: () {
+                                      _quickAddController.clear();
+                                      ref.read(dashboardProvider.notifier).updateSearchQuery('');
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: Icon(Icons.close, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            final notifier = ref.read(dashboardProvider.notifier);
+                            if (dashboardState.searchMode) {
+                              _quickAddController.clear();
+                              _searchFocusNode.unfocus();
+                              notifier.setSearchMode(false);
+                            } else {
+                              notifier.setSearchMode(true);
+                              _searchFocusNode.requestFocus();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: dashboardState.searchMode
+                                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
+                                  : Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              dashboardState.searchMode ? Icons.search_off : Icons.search,
+                              color: dashboardState.searchMode
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
                             final currentSort = dashboardState.sortBy;
                             final sortOptions = SortBy.values;
                             showCupertinoModalPopup(
@@ -514,7 +630,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           Icon(
-                                            _sortIcon(sort),
+                                            _sortIcon(sort) ?? Icons.swap_vert,
                                             size: 18,
                                             color: sort == currentSort
                                                 ? Theme.of(context).colorScheme.primary
@@ -534,27 +650,64 @@ class _DashboardState extends ConsumerState<Dashboard> {
                               ),
                             );
                           },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              _sortIcon(dashboardState.sortBy) ?? Icons.swap_vert,
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              size: 22,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
 
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2, bottom: 14),
-                    child: CupertinoTextField(
-                      controller: _quickAddController,
-                      placeholder: 'Quick add...',
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(14),
+                  if (dashboardState.searchMode)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 60),
+                      child: SizedBox(
+                        height: 56,
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _quickAddController.clear();
+                            _searchFocusNode.unfocus();
+                            ref.read(dashboardProvider.notifier).setSearchMode(false);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.surface,
+                            foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.primary,
+                            elevation: 6,
+                            shadowColor: Colors.black26,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.close, size: 28),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Cancel search',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                      onSubmitted: (_) => _quickAddTask(),
-                    ),
-                  ),
-
-                  if (!selectionMode)
+                    )
+                  else if (!selectionMode)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 60),
                       child: SizedBox(
@@ -697,6 +850,20 @@ class _DashboardState extends ConsumerState<Dashboard> {
         SortBy.priority => 'Priority',
         SortBy.created => 'Created',
       };
+
+  static IconData _groupIcon(GroupBy groupBy) => switch (groupBy) {
+        GroupBy.none => Icons.view_headline,
+        GroupBy.category => Icons.category,
+        GroupBy.priority => Icons.flag,
+        GroupBy.section => Icons.view_column,
+      };
+
+  static String _groupLabel(GroupBy groupBy) => switch (groupBy) {
+        GroupBy.none => 'No group',
+        GroupBy.category => 'Category',
+        GroupBy.priority => 'Priority',
+        GroupBy.section => 'Section',
+      };
 }
 
 class _LabelFilterRow extends ConsumerWidget {
@@ -724,8 +891,9 @@ class _LabelFilterRow extends ConsumerWidget {
               : null;
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                 if (selectedLabel != null)
                   GestureDetector(
                     onTap: onClearFilter,
@@ -859,8 +1027,8 @@ class _LabelFilterRow extends ConsumerWidget {
             TextButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
-                final id = LabelService().generateId(userId);
-                await LabelService().createLabel(Label(
+                final id = ref.read(labelServiceProvider).generateId(userId);
+                await ref.read(labelServiceProvider).createLabel(Label(
                   id: id,
                   name: nameController.text.trim(),
                   color: selectedColor.toARGB32(),
@@ -932,7 +1100,7 @@ class _LabelFilterRow extends ConsumerWidget {
                             ),
                           );
                           if (confirm == true) {
-                            await LabelService().deleteLabel(userId, label.id);
+                            await ref.read(labelServiceProvider).deleteLabel(userId, label.id);
                             ref.invalidate(userLabelsProvider(userId));
                           }
                         },
@@ -1087,29 +1255,24 @@ class _ViewModeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white70, size: 14),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: Colors.white70, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );

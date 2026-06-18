@@ -82,6 +82,20 @@ class GroupMember {
     );
   }
 
+  GroupMember copyWith({
+    String? uid,
+    String? role,
+    DateTime? joinedAt,
+    String? username,
+  }) {
+    return GroupMember(
+      uid: uid ?? this.uid,
+      role: role ?? this.role,
+      joinedAt: joinedAt ?? this.joinedAt,
+      username: username ?? this.username,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'role': role,

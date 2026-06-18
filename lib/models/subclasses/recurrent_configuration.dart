@@ -19,6 +19,18 @@ class RecurrentConfig {
     );
   }
 
+  RecurrentConfig copyWith({
+    RecurrentFrequency? frequency,
+    int? interval,
+    List<int>? weekdays,
+  }) {
+    return RecurrentConfig(
+      frequency: frequency ?? this.frequency,
+      interval: interval ?? this.interval,
+      weekdays: weekdays ?? this.weekdays,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'frequency': frequency.index,

@@ -14,6 +14,18 @@ class TaskCategory {
     );
   }
 
+  TaskCategory copyWith({
+    String? id,
+    String? name,
+    int? color,
+  }) {
+    return TaskCategory(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {'id': id, 'name': name, 'color': color};
   }

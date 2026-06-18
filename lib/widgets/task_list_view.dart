@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/widgets/empty_state_widget.dart';
 import 'package:to_do_app/core/smart_filter_utils.dart';
+import 'package:to_do_app/providers/sections_provider.dart';
 
 class TaskListView extends ConsumerStatefulWidget {
   final String userId;
@@ -31,9 +34,11 @@ class TaskListView extends ConsumerStatefulWidget {
 
 class _TaskListViewState extends ConsumerState<TaskListView> {
   final ScrollController _scrollController = ScrollController();
+  Timer? _reorderDebounce;
 
   @override
   void dispose() {
+    _reorderDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -88,45 +93,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
         } else if (groupBy == GroupBy.none) {
           content = _buildFlatList(tasks);
         } else {
-          final Map<String, List<Task>> groups = {};
-          final List<String> groupOrder = [];
-          if (groupBy == GroupBy.category) {
-            for (final task in tasks) {
-              final key = task.category.name;
-              groups.putIfAbsent(key, () => []);
-              if (!groupOrder.contains(key)) groupOrder.add(key);
-              groups[key]!.add(task);
-            }
-          } else {
-            for (final task in tasks) {
-              final key = task.priority.displayName;
-              groups.putIfAbsent(key, () => []);
-              if (!groupOrder.contains(key)) groupOrder.add(key);
-              groups[key]!.add(task);
-            }
-          }
-
-          final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
-          content = ListView(
-            controller: _scrollController,
-            children: [
-              if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
-              for (final key in groupOrder)
-                ExpansionTile(
-                initiallyExpanded: true,
-                title: Text(
-                  '$key (${groups[key]!.length})',
-                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
-                ),
-                children: groups[key]!.map((task) => TaskListItem(
-                  key: ValueKey(task.id),
-                  task: task,
-                  selectedIndex: widget.selectedIndex,
-                  userInitial: widget.userInitial,
-                )).toList(),
-              ),
-            ],
-          );
+          content = _buildGroupedList(tasks, groupBy);
         }
 
         return content;
@@ -187,6 +154,29 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
 
   Widget _buildFlatList(List<Task> tasks) {
     final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
+    final sortBy = ref.watch(dashboardProvider.select((s) => s.sortBy));
+    final canReorder = sortBy == SortBy.order && !isDone;
+
+    if (canReorder) {
+      return ReorderableListView.builder(
+        itemCount: tasks.length,
+        onReorder: (oldIndex, newIndex) => _onReorder(tasks, oldIndex, newIndex),
+        proxyDecorator: (child, index, animation) => AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) => Material(
+            elevation: 4,
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: child,
+          ),
+          child: child,
+        ),
+        itemBuilder: (context, index) {
+          return _buildTaskItem(tasks[index]);
+        },
+      );
+    }
+
     return ListView.builder(
       controller: _scrollController,
       itemCount: tasks.length + (isDone && tasks.length >= 2 ? 1 : 0),
@@ -198,6 +188,34 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
         return _buildTaskItem(tasks[taskIndex]);
       },
     );
+  }
+
+  void _onReorder(List<Task> tasks, int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    final updated = List<Task>.from(tasks);
+    final task = updated.removeAt(oldIndex);
+    updated.insert(newIndex, task);
+
+    final batch = FirebaseFirestore.instance.batch();
+    for (int i = 0; i < updated.length; i++) {
+      final t = updated[i];
+      if (t.order == i.toDouble()) continue;
+      if (t.groupId != null) {
+        batch.update(
+          FirebaseFirestore.instance.collection('groups').doc(t.groupId).collection('tasks').doc(t.id),
+          {'order': i.toDouble()},
+        );
+      } else {
+        batch.update(
+          FirebaseFirestore.instance.collection('tasks').doc(t.id),
+          {'order': i.toDouble()},
+        );
+      }
+    }
+    _reorderDebounce?.cancel();
+    _reorderDebounce = Timer(const Duration(milliseconds: 500), () {
+      batch.commit().catchError((e) => debugPrint('Reorder batch error: $e'));
+    });
   }
 
   Widget _buildClearAllHeader(List<Task> tasks) {
@@ -227,6 +245,103 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGroupedList(List<Task> tasks, GroupBy groupBy) {
+    final isDone = TaskStatus.values[widget.selectedIndex] == TaskStatus.fulfilled;
+
+    if (groupBy == GroupBy.section) {
+      return _buildSectionGroupedList(tasks, isDone);
+    }
+
+    final Map<String, List<Task>> groups = {};
+    final List<String> groupOrder = [];
+    if (groupBy == GroupBy.category) {
+      for (final task in tasks) {
+        final key = task.category.name;
+        groups.putIfAbsent(key, () => []);
+        if (!groupOrder.contains(key)) groupOrder.add(key);
+        groups[key]!.add(task);
+      }
+    } else {
+      for (final task in tasks) {
+        final key = task.priority.displayName;
+        groups.putIfAbsent(key, () => []);
+        if (!groupOrder.contains(key)) groupOrder.add(key);
+        groups[key]!.add(task);
+      }
+    }
+
+    return ListView(
+      controller: _scrollController,
+      children: [
+        if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
+        for (final key in groupOrder)
+          ExpansionTile(
+          initiallyExpanded: true,
+          title: Text(
+            '$key (${groups[key]!.length})',
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+          ),
+          children: groups[key]!.map((task) => _buildTaskItem(task)).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionGroupedList(List<Task> tasks, bool isDone) {
+    final sectionsAsync = ref.watch(userSectionsProvider(widget.userId));
+    final definedSections = sectionsAsync.asData?.value ?? [];
+
+    final Map<String, List<Task>> groups = {};
+    final List<String> groupOrder = [];
+
+    for (final s in definedSections) {
+      groups[s.name] = [];
+      groupOrder.add(s.name);
+    }
+
+    final noSection = <Task>[];
+    for (final task in tasks) {
+      if (task.section != null) {
+        final section = definedSections.where((s) => s.id == task.section).firstOrNull;
+        final key = section?.name ?? 'Other';
+        groups.putIfAbsent(key, () => []);
+        if (!groupOrder.contains(key)) {
+          groupOrder.add(key);
+        }
+        groups[key]!.add(task);
+      } else {
+        noSection.add(task);
+      }
+    }
+
+    groupOrder.removeWhere((k) => groups[k]!.isEmpty);
+
+    return ListView(
+      controller: _scrollController,
+      children: [
+        if (isDone && tasks.length >= 2) _buildClearAllHeader(tasks),
+        if (noSection.isNotEmpty)
+          ExpansionTile(
+            initiallyExpanded: true,
+            title: Text(
+              'General (${noSection.length})',
+              style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+            ),
+            children: noSection.map((task) => _buildTaskItem(task)).toList(),
+          ),
+        for (final key in groupOrder)
+          ExpansionTile(
+            initiallyExpanded: true,
+            title: Text(
+              '$key (${groups[key]!.length})',
+              style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+            ),
+            children: groups[key]!.map((task) => _buildTaskItem(task)).toList(),
+          ),
+      ],
     );
   }
 

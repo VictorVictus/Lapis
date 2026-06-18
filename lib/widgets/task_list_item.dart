@@ -21,7 +21,6 @@ import 'package:to_do_app/providers/group_members_cache_provider.dart';
 import 'package:to_do_app/providers/label_providers.dart';
 import 'package:to_do_app/models/subclasses/label.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/widgets/add_task/subtask_create_sheet.dart';
 
 class TaskListItem extends ConsumerStatefulWidget {
@@ -347,7 +346,7 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
         if (widget.task.status == TaskStatus.undone) {
           target = TaskStatus.inProgress;
         }
-        if (await _allSubtasksDone()) {
+        if (_allSubtasksDone()) {
           target = TaskStatus.fulfilled;
         }
         if (target == null) return;
@@ -438,36 +437,16 @@ class _TaskListItemState extends ConsumerState<TaskListItem> with TickerProvider
     }
   }
 
-  Future<bool> _allSubtasksDone() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return false;
-    try {
-      if (_groupId != null) {
-        final query = await FirebaseFirestore.instance
-            .collection('groups')
-            .doc(_groupId)
-            .collection('tasks')
-            .doc(widget.task.id)
-            .collection('subtasks')
-            .get();
-        if (query.docs.isEmpty) return false;
-        return query.docs.every(
-          (doc) => (doc.data()['isDone'] as bool?) ?? false,
-        );
-      }
-      final snapshot = await FirebaseFirestore.instance
-          .collection('subtasks')
-          .where('taskId', isEqualTo: widget.task.id)
-          .where('userId', isEqualTo: userId)
-          .get();
-      if (snapshot.docs.isEmpty) return false;
-      return snapshot.docs.every(
-        (doc) => (doc.data()['isDone'] as bool?) ?? false,
-      );
-    } catch (e) {
-      debugPrint('Error checking subtasks: $e');
-      return false;
-    }
+  bool _allSubtasksDone() {
+    final subtasks = ref.read(unifiedSubTasksProvider(SubTaskQuery(
+      taskId: widget.task.id,
+      groupId: _groupId,
+    )));
+    return subtasks.when(
+      data: (list) => list.isNotEmpty && list.every((s) => s.isDone),
+      loading: () => false,
+      error: (_, __) => false,
+    );
   }
 
   Future<void> _deleteSubTask(SubTask subTask) async {

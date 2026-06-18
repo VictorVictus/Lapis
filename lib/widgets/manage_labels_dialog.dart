@@ -62,7 +62,7 @@ class ManageLabelsDialog extends ConsumerWidget {
                         ),
                       );
                       if (confirm == true) {
-                        await LabelService().deleteLabel(userId, label.id);
+                        await ref.read(labelServiceProvider).deleteLabel(userId, label.id);
                         ref.invalidate(userLabelsProvider(userId));
                       }
                     },
@@ -141,7 +141,7 @@ class ManageLabelsDialog extends ConsumerWidget {
             TextButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
-                await LabelService().updateLabel(label.copyWith(
+                await ref.read(labelServiceProvider).updateLabel(label.copyWith(
                   name: nameController.text.trim(),
                   color: selectedColor.toARGB32(),
                 ));
@@ -204,8 +204,8 @@ class ManageLabelsDialog extends ConsumerWidget {
             TextButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
-                final id = LabelService().generateId(userId);
-                await LabelService().createLabel(Label(
+                final id = ref.read(labelServiceProvider).generateId(userId);
+                await ref.read(labelServiceProvider).createLabel(Label(
                   id: id,
                   name: nameController.text.trim(),
                   color: selectedColor.toARGB32(),

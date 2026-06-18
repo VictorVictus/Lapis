@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/subclasses/sub_task.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
@@ -20,6 +21,7 @@ class GroupTask {
   double order;
   final DateTime createdAt;
   List<String> labelIds;
+  String? section;
 
   GroupTask({
     required this.id,
@@ -38,15 +40,10 @@ class GroupTask {
     this.notes,
     this.order = 0,
     this.labelIds = const [],
+    this.section,
   }) : category = category ?? TaskCategory(id: 'uncategorized', name: 'General', color: 0xFF9E9E9E);
 
   factory GroupTask.fromMap(Map<String, dynamic> map, String id, {required String groupId}) {
-    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
-      if (raw is! int) return defaultIndex;
-      if (raw < 0 || raw >= values.length) return defaultIndex;
-      return raw;
-    }
-
     return GroupTask(
       id: id,
       groupId: groupId,
@@ -66,6 +63,7 @@ class GroupTask {
       order: (map['order'] as num?)?.toDouble() ?? 0,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       labelIds: (map['labelIds'] as List<dynamic>?)?.cast<String>() ?? [],
+      section: map['section'] as String?,
     );
   }
 
@@ -86,6 +84,7 @@ class GroupTask {
       'order': order,
       'createdAt': Timestamp.fromDate(createdAt),
       'labelIds': labelIds,
+      'section': section,
     };
   }
 
@@ -108,6 +107,7 @@ class GroupTask {
       groupName: groupName,
       assignedTo: assignedTo,
       labelIds: labelIds,
+      section: section,
     );
   }
 
@@ -124,6 +124,7 @@ class GroupTask {
     String? notes,
     double? order,
     List<String>? labelIds,
+    String? section,
   }) {
     return GroupTask(
       id: id,
@@ -142,6 +143,7 @@ class GroupTask {
       order: order ?? this.order,
       createdAt: createdAt,
       labelIds: labelIds ?? this.labelIds,
+      section: section ?? this.section,
     );
   }
 }
@@ -172,12 +174,6 @@ class GroupSubTask {
   });
 
   factory GroupSubTask.fromMap(Map<String, dynamic> map, String id, {required String groupTaskId}) {
-    int safeIndex<T>(List<T> values, dynamic raw, int defaultIndex) {
-      if (raw is! int) return defaultIndex;
-      if (raw < 0 || raw >= values.length) return defaultIndex;
-      return raw;
-    }
-
     return GroupSubTask(
       id: id,
       groupTaskId: groupTaskId,
@@ -279,6 +275,7 @@ extension TaskGroupConversion on Task {
       order: order,
       assignedTo: assignedTo,
       labelIds: labelIds,
+      section: section,
     );
   }
 }

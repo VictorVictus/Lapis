@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/task.dart';
-import 'package:to_do_app/models/subclasses/group_task.dart';
 import 'package:to_do_app/providers/unified_task_provider.dart';
 import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/group_service.dart';
+import 'package:to_do_app/models/subclasses/group_task.dart';
 import 'package:to_do_app/widgets/task_list_item.dart';
-
-Color _saturate(Color c) =>
-    HSLColor.fromColor(c).withSaturation(1.0).toColor();
 
 class KanbanView extends ConsumerStatefulWidget {
   final String userId;
@@ -32,6 +29,12 @@ class _KanbanViewState extends ConsumerState<KanbanView>
   final _doneColumnKey = GlobalKey();
 
   OverlayEntry? _portalEntry;
+
+  static const _defaultColumns = [
+    _ColumnDef('Undone', TaskStatus.undone, Color(0xFF5F6368)),
+    _ColumnDef('In Progress', TaskStatus.inProgress, Color(0xFFE65100)),
+    _ColumnDef('Done', TaskStatus.fulfilled, Color(0xFF2E7D32)),
+  ];
 
   @override
   void dispose() {
@@ -76,37 +79,16 @@ class _KanbanViewState extends ConsumerState<KanbanView>
         final filtered = widget.groupId != null
             ? allTasks.where((t) => t.groupId == widget.groupId).toList()
             : allTasks;
-        final active = filtered
-            .where((t) => t.status == TaskStatus.undone && !t.isArchived)
-            .toList()
-          ..sort((a, b) => a.order.compareTo(b.order));
-        final inProgress = filtered
-            .where((t) => t.status == TaskStatus.inProgress && !t.isArchived)
-            .toList()
-          ..sort((a, b) => a.order.compareTo(b.order));
-        final done = filtered
-            .where((t) => t.status == TaskStatus.fulfilled && !t.isArchived)
-            .toList()
-          ..sort((a, b) => a.order.compareTo(b.order));
-
-        final columns = [
-          ('Undone', active, TaskStatus.undone),
-          ('In Progress', inProgress, TaskStatus.inProgress),
-          ('Done', done, TaskStatus.fulfilled),
-        ];
-        final scheme = Theme.of(context).colorScheme;
-        final saturated = _saturate;
-        final colors = [
-          saturated(scheme.tertiary),
-          saturated(scheme.secondary),
-          saturated(scheme.primary),
-        ];
 
         return Row(
-          children: List.generate(columns.length, (i) {
-            final (title, tasks, status) = columns[i];
+          children: List.generate(_defaultColumns.length, (i) {
+            final col = _defaultColumns[i];
+            final columnTasks = filtered
+                .where((t) => t.status == col.status && !t.isArchived)
+                .toList()
+              ..sort((a, b) => a.order.compareTo(b.order));
             return _buildColumn(
-                context, title, tasks, colors[i], status, i, ref);
+                context, col.name, columnTasks, col.color, col.status, i, ref);
           }),
         );
       },
@@ -243,6 +225,13 @@ class _KanbanViewState extends ConsumerState<KanbanView>
       ),
     );
   }
+}
+
+class _ColumnDef {
+  final String name;
+  final TaskStatus status;
+  final Color color;
+  const _ColumnDef(this.name, this.status, this.color);
 }
 
 class _PortalGhost extends StatefulWidget {

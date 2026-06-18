@@ -27,6 +27,7 @@ class AddTaskState {
   final String? groupId;
   final String? assignedTo;
   final List<String> selectedLabelIds;
+  final String? selectedSection;
 
   bool get isEditing => existingTask != null;
 
@@ -48,6 +49,7 @@ class AddTaskState {
     this.groupId,
     this.assignedTo,
     this.selectedLabelIds = const [],
+    this.selectedSection,
   });
 
   AddTaskState copyWith({
@@ -68,6 +70,7 @@ class AddTaskState {
     String? groupId,
     String? assignedTo,
     List<String>? selectedLabelIds,
+    String? selectedSection,
   }) {
     return AddTaskState(
       title: title ?? this.title,
@@ -87,6 +90,7 @@ class AddTaskState {
       groupId: groupId ?? this.groupId,
       assignedTo: assignedTo ?? this.assignedTo,
       selectedLabelIds: selectedLabelIds ?? this.selectedLabelIds,
+      selectedSection: selectedSection ?? this.selectedSection,
     );
   }
 }
@@ -117,6 +121,7 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
       groupId: task.groupId,
       assignedTo: task.assignedTo,
       selectedLabelIds: task.labelIds,
+      selectedSection: task.section,
     );
   }
 
@@ -140,6 +145,8 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
   void updateDeadline(DateTime date) => state = state.copyWith(deadline: date);
   void setGroupId(String groupId) => state = state.copyWith(groupId: groupId);
   void updateAssignedTo(String? uid) => state = state.copyWith(assignedTo: uid);
+  void updateSection(String? sectionId) => state = state.copyWith(selectedSection: sectionId);
+
   void toggleLabel(String labelId) {
     final ids = List<String>.from(state.selectedLabelIds);
     if (ids.contains(labelId)) {
@@ -209,6 +216,7 @@ class AddTaskNotifier extends Notifier<AddTaskState> {
         groupId: groupId,
         assignedTo: state.assignedTo,
         labelIds: state.selectedLabelIds,
+        section: state.selectedSection,
       );
 
       if (isGroupTask) {

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/subclasses/sub_task.dart';
 import 'package:to_do_app/services/subtask_service.dart';
@@ -25,5 +26,6 @@ final unifiedSubTasksProvider = StreamProvider.family<List<SubTask>, SubTaskQuer
       (list) => list.map((gs) => gs.toSubTask()).toList(),
     );
   }
-  return ref.read(subTaskServiceProvider).getSubTasks(query.taskId);
+  final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  return ref.read(subTaskServiceProvider).getSubTasks(query.taskId, userId);
 });

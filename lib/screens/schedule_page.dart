@@ -5,8 +5,10 @@ import 'package:to_do_app/models/user.dart' as app_user;
 import 'package:to_do_app/widgets/task_list_item.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_app/providers/task_provider.dart';
+import 'package:to_do_app/providers/unified_task_provider.dart';
 import 'package:to_do_app/theme/app_theme.dart';
+
+enum CalendarViewMode { month, week, day }
 
 class SchedulePage extends ConsumerStatefulWidget {
   final app_user.User user;
@@ -19,6 +21,7 @@ class SchedulePage extends ConsumerStatefulWidget {
 class _SchedulePageState extends ConsumerState<SchedulePage> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
+  CalendarViewMode _viewMode = CalendarViewMode.month;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +41,6 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button & Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
@@ -47,72 +49,26 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                       icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Text(
-                      'Back',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    const Text('Back', style: TextStyle(color: Colors.white, fontSize: 18)),
+                    const Spacer(),
+                    _ViewToggle(
+                      current: _viewMode,
+                      onChanged: (v) => setState(() => _viewMode = v),
                     ),
                   ],
                 ),
               ),
               const Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
                     'Schedule',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-
-              // Calendar Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark 
-                        ? Theme.of(context).colorScheme.surface
-                        : const Color(0xFFBEF3FF),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildCalendarHeader(),
-                      const SizedBox(height: 10),
-                      _buildDaysOfWeek(),
-                      _buildCalendarGrid(),
-                      const SizedBox(height: 10),
-                      _buildTimePickerPlaceholder(),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Tasks List Title
-              Center(
-                child: Text(
-                  _isToday(_selectedDay) 
-                      ? "Today's Tasks" 
-                      : "${DateFormat('MMMM d').format(_selectedDay)} Tasks",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Dynamic Task List
               Expanded(
-                child: _buildTasksForSelectedDay(),
+                child: _buildBody(),
               ),
             ],
           ),
@@ -121,37 +77,242 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
+  Widget _buildBody() {
+    switch (_viewMode) {
+      case CalendarViewMode.month:
+        return _buildMonthView();
+      case CalendarViewMode.week:
+        return _buildWeekView();
+      case CalendarViewMode.day:
+        return _buildDayView();
+    }
+  }
+
+  Widget _buildMonthView() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.surface
+                  : const Color(0xFFBEF3FF),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Column(
+              children: [
+                _buildCalendarHeader(),
+                const SizedBox(height: 10),
+                _buildDaysOfWeek(),
+                _buildCalendarGrid(),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: Text(
+            _isToday(_selectedDay) ? "Today's Tasks" : "${DateFormat('MMMM d').format(_selectedDay)} Tasks",
+            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(child: _buildTasksForSelectedDay()),
+      ],
+    );
+  }
+
+  Widget _buildWeekView() {
+    final weekStart = _focusedDay.subtract(Duration(days: _focusedDay.weekday - 1));
+    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.surface
+                  : const Color(0xFFBEF3FF),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: () => setState(() => _focusedDay = _focusedDay.subtract(const Duration(days: 7))),
+                    ),
+                    Text(
+                      '${DateFormat('MMM d').format(days.first)} - ${DateFormat('MMM d, yyyy').format(days.last)}',
+                      style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF003D9E),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => setState(() => _focusedDay = _focusedDay.add(const Duration(days: 7))),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildDaysOfWeek(),
+                _buildWeekGrid(days),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: Text(
+            DateFormat('EEEE, MMMM d').format(_selectedDay),
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(child: _buildTasksForSelectedDay()),
+      ],
+    );
+  }
+
+  Widget _buildWeekGrid(List<DateTime> days) {
+    final tasksAsync = ref.watch(unifiedTasksProvider(widget.user.uid));
+    return tasksAsync.when(
+      data: (allTasks) {
+        return SizedBox(
+          height: 100,
+          child: Row(
+            children: List.generate(7, (i) {
+              final day = days[i];
+              final dayTasks = allTasks.where((t) =>
+                t.scheduledAt != null && _isSameDay(t.scheduledAt!, day) && !t.isArchived
+              ).toList();
+              final isSelected = _isSameDay(day, _selectedDay);
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedDay = day),
+                  child: Container(
+                    margin: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark ? Colors.white.withValues(alpha: 0.15) : const Color(0xFFACE9FF))
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${day.day}',
+                          style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF003D9E),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        ...dayTasks.take(3).map((t) => Container(
+                          width: 4, height: 4, margin: const EdgeInsets.symmetric(vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Color(t.category.color),
+                            shape: BoxShape.circle,
+                          ),
+                        )),
+                        if (dayTasks.length > 3)
+                          Text('+${dayTasks.length - 3}', style: const TextStyle(fontSize: 8, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 100, child: Center(child: CupertinoActivityIndicator())),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildDayView() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Theme.of(context).colorScheme.surface
+                  : const Color(0xFFBEF3FF),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => setState(() => _selectedDay = _selectedDay.subtract(const Duration(days: 1))),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      DateFormat('EEEE').format(_selectedDay),
+                      style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : const Color(0xFF003D9E),
+                      ),
+                    ),
+                    Text(
+                      DateFormat('MMMM d, yyyy').format(_selectedDay),
+                      style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF003D9E),
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => setState(() => _selectedDay = _selectedDay.add(const Duration(days: 1))),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(child: _buildTasksForSelectedDay()),
+      ],
+    );
+  }
+
   Widget _buildCalendarHeader() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final headerColor = isDark ? Colors.white : const Color(0xFF003D9E);
-    final iconColor = isDark ? Colors.white70 : Colors.blue;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Text(
-              DateFormat('MMMM yyyy').format(_focusedDay),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: headerColor,
-              ),
-            ),
-            Icon(Icons.chevron_right, color: headerColor),
-          ],
+        Text(
+          DateFormat('MMMM yyyy').format(_focusedDay),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: headerColor),
         ),
         Row(
           children: [
             IconButton(
-              icon: Icon(Icons.chevron_left, color: iconColor),
-              tooltip: 'Previous month',
+              icon: Icon(Icons.chevron_left, color: headerColor),
               onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1)),
             ),
             IconButton(
-              icon: Icon(Icons.chevron_right, color: iconColor),
-              tooltip: 'Next month',
+              icon: Icon(Icons.chevron_right, color: headerColor),
               onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1)),
             ),
           ],
@@ -165,8 +326,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: days.map((day) => Text(
-        day,
-        style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+        day, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
       )).toList(),
     );
   }
@@ -174,26 +334,18 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
   Widget _buildCalendarGrid() {
     final daysInMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
     final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1).weekday % 7;
-    
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cs = Theme.of(context).colorScheme;
-    final tasksAsync = ref.watch(tasksStreamProvider(widget.user.uid));
-    
+    final tasksAsync = ref.watch(unifiedTasksProvider(widget.user.uid));
+
     return tasksAsync.when(
       loading: () => const Center(child: CupertinoActivityIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
-      data: (tasks) {
-        // Group tasks by date for dots
+      error: (_, __) => const SizedBox.shrink(),
+      data: (allTasks) {
         final Map<String, List<int>> tasksByDate = {};
-        for (var task in tasks) {
+        for (var task in allTasks) {
           if (task.scheduledAt != null) {
             final dateKey = DateFormat('yyyy-MM-dd').format(task.scheduledAt!);
-            final status = task.status;
-            final categoryColor = task.category.color;
-            
-            // If task is fulfilled, we use a grey color for the dot
-            final dotColor = (status == TaskStatus.fulfilled) ? 0xFF9E9E9E : categoryColor;
-            
+            final dotColor = task.status == TaskStatus.fulfilled ? 0xFF9E9E9E : task.category.color;
             tasksByDate.putIfAbsent(dateKey, () => []).add(dotColor);
           }
         }
@@ -203,30 +355,16 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisSpacing: 10,
+            crossAxisCount: 7, mainAxisSpacing: 10,
           ),
           itemCount: daysInMonth + firstDayOfMonth,
           itemBuilder: (context, index) {
             if (index < firstDayOfMonth) return const SizedBox.shrink();
-            
             final day = index - firstDayOfMonth + 1;
             final date = DateTime(_focusedDay.year, _focusedDay.month, day);
             final dateKey = DateFormat('yyyy-MM-dd').format(date);
             final bool isSelected = _isSameDay(date, _selectedDay);
             final colors = tasksByDate[dateKey] ?? [];
-
-            Color containerColor = Colors.transparent;
-            if (isSelected) {
-              containerColor = isDark ? cs.primary.withValues(alpha: 0.35) : const Color(0xFFACE9FF);
-            }
-
-            Color textColor;
-            if (isSelected) {
-              textColor = isDark ? Colors.white : const Color(0xFF1E58FF);
-            } else {
-              textColor = isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF003D9E);
-            }
 
             return GestureDetector(
               onTap: () => setState(() => _selectedDay = date),
@@ -234,35 +372,30 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 36, height: 36,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: containerColor,
+                      color: isSelected
+                          ? (isDark ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.35) : const Color(0xFFACE9FF))
+                          : Colors.transparent,
                       shape: BoxShape.circle,
-                      border: isSelected && !isDark ? Border.all(color: Colors.white, width: 1.5) : null,
                     ),
                     child: Text(
                       '$day',
                       style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        color: isSelected
+                            ? (isDark ? Colors.white : const Color(0xFF1E58FF))
+                            : (isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF003D9E)),
+                        fontWeight: FontWeight.bold, fontSize: 16,
                       ),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  // Dots Logic: Show categories, max 3
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: colors.take(3).map((color) => Container(
-                      width: 4,
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                      decoration: BoxDecoration(
-                        color: Color(color),
-                        shape: BoxShape.circle,
-                      ),
+                    children: colors.take(3).map((c) => Container(
+                      width: 4, height: 4, margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle),
                     )).toList(),
                   ),
                 ],
@@ -274,72 +407,48 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  Widget _buildTimePickerPlaceholder() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white24,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('Time', style: TextStyle(color: isDark ? Colors.white70 : const Color(0xFF003D9E), fontSize: 16)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? cs.primary.withValues(alpha: 0.35) : const Color(0xFFACE9FF),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              DateFormat('hh:mm a').format(DateTime.now()),
-              style: TextStyle(color: isDark ? Colors.white : const Color(0xFF003D9E), fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTasksForSelectedDay() {
-    final tasksAsync = ref.watch(tasksStreamProvider(widget.user.uid));
-    
+    final tasksAsync = ref.watch(unifiedTasksProvider(widget.user.uid));
+
     return tasksAsync.when(
       loading: () => const Center(child: CupertinoActivityIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white70))),
-      data: (tasks) {
-        final filteredTasks = tasks
+      error: (_, __) => const SizedBox.shrink(),
+      data: (allTasks) {
+        final filteredTasks = allTasks
             .where((task) => task.scheduledAt != null && _isSameDay(task.scheduledAt!, _selectedDay))
-            .toList();
+            .toList()
+          ..sort((a, b) {
+            final aTime = a.scheduledAt;
+            final bTime = b.scheduledAt;
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return aTime.compareTo(bTime);
+          });
 
         if (filteredTasks.isEmpty) {
-          return const Center(
-            child: Text(
-              'No tasks for this day',
-              style: TextStyle(color: Colors.white70),
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.event_busy, size: 40, color: Colors.white.withValues(alpha: 0.3)),
+                const SizedBox(height: 8),
+                const Text('No tasks for this day', style: TextStyle(color: Colors.white70)),
+              ],
             ),
           );
         }
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 20),
             itemCount: filteredTasks.length,
             itemBuilder: (context, index) {
               final task = filteredTasks[index];
-              final bool isFulfilled = task.status == TaskStatus.fulfilled;
-              
-              return Opacity(
-                opacity: isFulfilled ? 0.6 : 1.0,
-                child: TaskListItem(
-                  key: ValueKey(task.id),
-                  task: task,
-                  selectedIndex: isFulfilled ? 2 : 0,
-                ),
+              return TaskListItem(
+                key: ValueKey(task.id),
+                task: task,
+                selectedIndex: task.status == TaskStatus.fulfilled ? 2 : 0,
               );
             },
           ),
@@ -348,12 +457,59 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
     return _isSameDay(date, now);
+  }
+}
+
+class _ViewToggle extends StatelessWidget {
+  final CalendarViewMode current;
+  final ValueChanged<CalendarViewMode> onChanged;
+
+  const _ViewToggle({required this.current, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleButton(label: 'M', mode: CalendarViewMode.month),
+          _toggleButton(label: 'W', mode: CalendarViewMode.week),
+          _toggleButton(label: 'D', mode: CalendarViewMode.day),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleButton({required String label, required CalendarViewMode mode}) {
+    final isActive = current == mode;
+    return GestureDetector(
+      onTap: () => onChanged(mode),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withValues(alpha: 0.2) : null,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : Colors.white54,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
   }
 }

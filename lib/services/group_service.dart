@@ -3,11 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/subclasses/group.dart';
 import 'package:to_do_app/models/subclasses/group_task.dart';
+import 'package:to_do_app/services/sync_coordinator.dart';
 
-final groupServiceProvider = Provider<GroupService>((ref) => GroupService());
+final groupServiceProvider = Provider<GroupService>((ref) => GroupService(ref));
 
 class GroupService {
+  final Ref _ref;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  GroupService(this._ref);
 
   String _generateInviteCode() {
     final rand = Random();
@@ -42,22 +46,24 @@ class GroupService {
     final code = _generateInviteCode();
     final now = DateTime.now();
 
-    await _firestore.runTransaction((tx) async {
-      tx.set(ref, {
-        'name': name,
-        'description': description,
-        'createdBy': userId,
-        'inviteCode': code,
-        'createdAt': Timestamp.fromDate(now),
-        'memberCount': 1,
-      });
-      tx.set(ref.collection('members').doc(userId), {
-        'role': 'admin',
-        'joinedAt': Timestamp.fromDate(now),
-        'username': username,
-      });
-      tx.update(_firestore.collection('users').doc(userId), {
-        'groupIds': FieldValue.arrayUnion([ref.id]),
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore.runTransaction((tx) async {
+        tx.set(ref, {
+          'name': name,
+          'description': description,
+          'createdBy': userId,
+          'inviteCode': code,
+          'createdAt': Timestamp.fromDate(now),
+          'memberCount': 1,
+        });
+        tx.set(ref.collection('members').doc(userId), {
+          'role': 'admin',
+          'joinedAt': Timestamp.fromDate(now),
+          'username': username,
+        });
+        tx.update(_firestore.collection('users').doc(userId), {
+          'groupIds': FieldValue.arrayUnion([ref.id]),
+        });
       });
     });
 
@@ -88,17 +94,19 @@ class GroupService {
     final existing = await groupDoc.reference.collection('members').doc(userId).get();
     if (existing.exists) return groupId;
 
-    await _firestore.runTransaction((tx) async {
-      tx.set(groupDoc.reference.collection('members').doc(userId), {
-        'role': 'member',
-        'joinedAt': Timestamp.fromDate(DateTime.now()),
-        'username': username,
-      });
-      tx.update(groupDoc.reference, {
-        'memberCount': FieldValue.increment(1),
-      });
-      tx.update(_firestore.collection('users').doc(userId), {
-        'groupIds': FieldValue.arrayUnion([groupId]),
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore.runTransaction((tx) async {
+        tx.set(groupDoc.reference.collection('members').doc(userId), {
+          'role': 'member',
+          'joinedAt': Timestamp.fromDate(DateTime.now()),
+          'username': username,
+        });
+        tx.update(groupDoc.reference, {
+          'memberCount': FieldValue.increment(1),
+        });
+        tx.update(_firestore.collection('users').doc(userId), {
+          'groupIds': FieldValue.arrayUnion([groupId]),
+        });
       });
     });
 
@@ -106,12 +114,14 @@ class GroupService {
   }
 
   Future<void> leaveGroup(String groupId, String userId) async {
-    final ref = _firestore.collection('groups').doc(groupId);
-    await _firestore.runTransaction((tx) async {
-      tx.delete(ref.collection('members').doc(userId));
-      tx.update(ref, {'memberCount': FieldValue.increment(-1)});
-      tx.update(_firestore.collection('users').doc(userId), {
-        'groupIds': FieldValue.arrayRemove([groupId]),
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      final ref = _firestore.collection('groups').doc(groupId);
+      await _firestore.runTransaction((tx) async {
+        tx.delete(ref.collection('members').doc(userId));
+        tx.update(ref, {'memberCount': FieldValue.increment(-1)});
+        tx.update(_firestore.collection('users').doc(userId), {
+          'groupIds': FieldValue.arrayRemove([groupId]),
+        });
       });
     });
   }
@@ -142,7 +152,9 @@ class GroupService {
 
   Future<String> regenerateInviteCode(String groupId, String userId) async {
     final code = _generateInviteCode();
-    await _firestore.collection('groups').doc(groupId).update({'inviteCode': code});
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore.collection('groups').doc(groupId).update({'inviteCode': code});
+    });
     return code;
   }
 
@@ -159,33 +171,39 @@ class GroupService {
   }
 
   Future<void> createTask(GroupTask task) async {
-    await _firestore
-        .collection('groups')
-        .doc(task.groupId)
-        .collection('tasks')
-        .doc(task.id)
-        .set(task.toMap());
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore
+          .collection('groups')
+          .doc(task.groupId)
+          .collection('tasks')
+          .doc(task.id)
+          .set(task.toMap());
+    });
   }
 
   Future<void> updateTask(GroupTask task) async {
-    final map = task.toMap();
-    map.remove('createdBy');
-    map.remove('createdAt');
-    await _firestore
-        .collection('groups')
-        .doc(task.groupId)
-        .collection('tasks')
-        .doc(task.id)
-        .update(map);
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      final map = task.toMap();
+      map.remove('createdBy');
+      map.remove('createdAt');
+      await _firestore
+          .collection('groups')
+          .doc(task.groupId)
+          .collection('tasks')
+          .doc(task.id)
+          .update(map);
+    });
   }
 
   Future<void> deleteTask(String groupId, String taskId) async {
-    await _firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('tasks')
-        .doc(taskId)
-        .delete();
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('tasks')
+          .doc(taskId)
+          .delete();
+    });
   }
 
   String generateTaskId(String groupId) {
@@ -207,35 +225,41 @@ class GroupService {
   }
 
   Future<void> createSubTask(GroupSubTask subTask, String groupId) async {
-    await _firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('tasks')
-        .doc(subTask.groupTaskId)
-        .collection('subtasks')
-        .doc(subTask.id)
-        .set(subTask.toMap());
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('tasks')
+          .doc(subTask.groupTaskId)
+          .collection('subtasks')
+          .doc(subTask.id)
+          .set(subTask.toMap());
+    });
   }
 
   Future<void> updateSubTask(GroupSubTask subTask, String groupId) async {
-    await _firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('tasks')
-        .doc(subTask.groupTaskId)
-        .collection('subtasks')
-        .doc(subTask.id)
-        .update(subTask.toMap());
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('tasks')
+          .doc(subTask.groupTaskId)
+          .collection('subtasks')
+          .doc(subTask.id)
+          .update(subTask.toMap());
+    });
   }
 
   Future<void> deleteSubTask(String groupId, String taskId, String subTaskId) async {
-    await _firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('tasks')
-        .doc(taskId)
-        .collection('subtasks')
-        .doc(subTaskId)
-        .delete();
+    await _ref.read(syncCoordinatorProvider).runWithSyncStatus(() async {
+      await _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('tasks')
+          .doc(taskId)
+          .collection('subtasks')
+          .doc(subTaskId)
+          .delete();
+    });
   }
 }
