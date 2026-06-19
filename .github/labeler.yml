@@ -1,32 +1,40 @@
 ui:
-  - lib/widgets/**/*
-  - lib/theme/**/*
+  - any-glob-to-any-file:
+    - lib/widgets/**/*
+    - lib/theme/**/*
 
 screens:
-  - lib/screens/**/*
+  - any-glob-to-any-file:
+    - lib/screens/**/*
 
 providers:
-  - lib/providers/**/*
+  - any-glob-to-any-file:
+    - lib/providers/**/*
 
 models:
-  - lib/models/**/*
+  - any-glob-to-any-file:
+    - lib/models/**/*
 
 backend:
-  - lib/services/**/*
-  - functions/**/*
-  - firestore.rules
-  - firestore.indexes.json
-  - storage.rules
+  - any-glob-to-any-file:
+    - lib/services/**/*
+    - functions/**/*
+    - firestore.rules
+    - firestore.indexes.json
+    - storage.rules
 
 deps:
-  - pubspec.yaml
-  - pubspec.lock
-  - functions/package.json
-  - functions/package-lock.json
+  - any-glob-to-any-file:
+    - pubspec.yaml
+    - pubspec.lock
+    - functions/package.json
+    - functions/package-lock.json
 
 ci:
-  - .github/**/*
-  - codemagic.yaml
+  - any-glob-to-any-file:
+    - .github/**/*
+    - codemagic.yaml
 
 docs:
-  - '**/*.md'
+  - any-glob-to-any-file:
+    - '**/*.md'
