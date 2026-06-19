@@ -10,6 +10,8 @@ on:
 
 jobs:
   analyze:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +41,8 @@ jobs:
       - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
   test:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
