@@ -180,7 +180,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
       return ReorderableListView.builder(
         buildDefaultDragHandles: false,
         itemCount: tasks.length,
-        onReorder: (oldIndex, newIndex) => _onReorder(tasks, oldIndex, newIndex),
+        onReorderItem: (oldIndex, newIndex) => _onReorder(tasks, oldIndex, newIndex),
         proxyDecorator: (child, index, animation) => AnimatedBuilder(
           animation: animation,
           builder: (context, child) => Material(
@@ -216,7 +216,6 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
   }
 
   void _onReorder(List<Task> tasks, int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) newIndex--;
     final updated = List<Task>.from(tasks);
     final task = updated.removeAt(oldIndex);
     updated.insert(newIndex, task);

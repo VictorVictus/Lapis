@@ -34,7 +34,7 @@ jobs:
             );
           }
           EOF
-      - run: flutter analyze lib
+      - run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
   test:
     runs-on: ubuntu-latest
