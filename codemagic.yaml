@@ -16,6 +16,14 @@ workflows:
   android-release:
     name: Android Release (P0)
     max_build_duration: 60
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: '*'
+          include: false
     environment:
       groups:
         - firebase_credentials
