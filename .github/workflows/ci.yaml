@@ -11,7 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: cirruslabs/flutter-action@v2
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: /opt/flutter
+          key: flutter-linux-3.27.x
+      - name: Install Flutter
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.0-stable.tar.xz | tar -xJ -C /opt
+      - run: echo "/opt/flutter/bin" >> $GITHUB_PATH
       - run: flutter pub get
       - run: flutter analyze lib
 
@@ -19,6 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: cirruslabs/flutter-action@v2
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: /opt/flutter
+          key: flutter-linux-3.27.x
+      - name: Install Flutter
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.0-stable.tar.xz | tar -xJ -C /opt
+      - run: echo "/opt/flutter/bin" >> $GITHUB_PATH
       - run: flutter pub get
       - run: flutter test
