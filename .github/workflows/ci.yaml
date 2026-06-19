@@ -15,11 +15,13 @@ jobs:
         id: cache
         with:
           path: /opt/flutter
-          key: flutter-linux-3.27.x
+          key: flutter-linux-stable
       - name: Install Flutter
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.0-stable.tar.xz | tar -xJ -C /opt
+          URL=$(curl -sL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+            | python3 -c "import json,sys;d=json.load(sys.stdin);r=[r for r in d['releases'] if r['channel']=='stable'][0];print('https://storage.googleapis.com/flutter_infra_release/releases/'+r['archive'])")
+          curl -sL "$URL" | tar -xJ -C /opt
       - run: echo "/opt/flutter/bin" >> $GITHUB_PATH
       - run: flutter pub get
       - run: flutter analyze lib
@@ -32,11 +34,13 @@ jobs:
         id: cache
         with:
           path: /opt/flutter
-          key: flutter-linux-3.27.x
+          key: flutter-linux-stable
       - name: Install Flutter
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.0-stable.tar.xz | tar -xJ -C /opt
+          URL=$(curl -sL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+            | python3 -c "import json,sys;d=json.load(sys.stdin);r=[r for r in d['releases'] if r['channel']=='stable'][0];print('https://storage.googleapis.com/flutter_infra_release/releases/'+r['archive'])")
+          curl -sL "$URL" | tar -xJ -C /opt
       - run: echo "/opt/flutter/bin" >> $GITHUB_PATH
       - run: flutter pub get
       - run: flutter test
