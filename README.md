@@ -85,13 +85,27 @@ lib/
 
 ## Branch Workflow
 
-```
-                  feature
-                 ──── feat/foo ──┐
-                  ──── fix/bar ──┤          release              production
-                                  ├──→ develop ──→ release/1.0 ──→ main ──→ tag v1.0
-                  urgent           │              ↑
-                  ──── hotfix/baz ─┘              └── hotfix cherry-pick
+```mermaid
+gitGraph
+  commit
+  branch develop
+  commit id: "develop"
+  branch feat/foo
+  commit id: "feat"
+  checkout develop
+  merge feat/foo
+  branch release/1.0
+  commit id: "release"
+  checkout main
+  merge release/1.0 tag: "v1.0"
+  checkout develop
+  merge main
+  branch hotfix/urgent
+  commit id: "hotfix"
+  checkout main
+  merge hotfix/urgent
+  checkout develop
+  merge main
 ```
 
 | Branch | Purpose | Base | Lifespan |
