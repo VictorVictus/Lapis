@@ -4,12 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/core/firebase_bootstrap.dart';
-import 'package:to_do_app/core/legal_config.dart';
 import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/models/user.dart';
-import 'package:to_do_app/services/auth_validator.dart';
 import 'package:to_do_app/services/fcm_service.dart';
-import 'package:to_do_app/services/password_strength.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -68,7 +65,11 @@ class AuthService {
       };
 
       if (recordTermsAcceptance) {
-        userData.addAll(_termsAcceptanceFields());
+        userData.addAll({
+          'termsAcceptedAt': FieldValue.serverTimestamp(),
+          'termsVersion': '1.0',
+          'privacyPolicyVersion': '1.0',
+        });
       }
 
       await FirebaseFirestore.instance
@@ -87,14 +88,6 @@ class AuthService {
         createdAt: firebaseUser.metadata.creationTime,
       );
     }
-  }
-
-  Map<String, dynamic> _termsAcceptanceFields() {
-    return {
-      'termsAcceptedAt': FieldValue.serverTimestamp(),
-      'termsVersion': LegalConfig.termsVersion,
-      'privacyPolicyVersion': LegalConfig.privacyPolicyVersion,
-    };
   }
 
   AuthResult _mapFirebaseAuthException(firebase_auth.FirebaseAuthException e) {
@@ -123,7 +116,7 @@ class AuthService {
       AuthFailureCode.invalidUsername =>
         'Username must be 3–24 characters (letters, numbers, . _ -).',
       AuthFailureCode.weakPassword =>
-        'Password must be at least ${PasswordStrength.minLength} characters with upper, lower case, and a number.',
+        'Password must be at least 8 characters with upper, lower case, and a number.',
       AuthFailureCode.termsNotAccepted =>
         'Accept the Terms of Service and Privacy Policy to create an account.',
       AuthFailureCode.emailAlreadyInUse =>
@@ -148,20 +141,6 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final emailErr = AuthValidator.emailError(email);
-    if (emailErr != null) {
-      return AuthResult.failure(
-        failureCode: AuthFailureCode.invalidEmail,
-        message: emailErr,
-      );
-    }
-    if (password.trim().isEmpty) {
-      return AuthResult.failure(
-        failureCode: AuthFailureCode.weakPassword,
-        message: 'Password is required.',
-      );
-    }
-
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -203,30 +182,6 @@ class AuthService {
       return AuthResult.failure(
         failureCode: AuthFailureCode.termsNotAccepted,
         message: _friendlyMessage(AuthFailureCode.termsNotAccepted),
-      );
-    }
-
-    final emailErr = AuthValidator.emailError(email);
-    if (emailErr != null) {
-      return AuthResult.failure(
-        failureCode: AuthFailureCode.invalidEmail,
-        message: emailErr,
-      );
-    }
-
-    final usernameErr = AuthValidator.usernameError(username);
-    if (usernameErr != null) {
-      return AuthResult.failure(
-        failureCode: AuthFailureCode.invalidUsername,
-        message: usernameErr,
-      );
-    }
-
-    final passwordErr = PasswordStrength.passwordError(password);
-    if (passwordErr != null) {
-      return AuthResult.failure(
-        failureCode: AuthFailureCode.weakPassword,
-        message: passwordErr,
       );
     }
 

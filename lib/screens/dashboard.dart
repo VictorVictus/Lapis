@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:confetti/confetti.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/user.dart';
 import 'package:to_do_app/models/subclasses/label.dart';
@@ -26,7 +25,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/services/label_service.dart';
 import 'package:to_do_app/services/share_service.dart';
-import 'package:to_do_app/core/smart_filter_utils.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/widgets/notification_permission_dialog.dart';
 import 'package:to_do_app/widgets/screen_pinning_dialog.dart';
@@ -42,7 +40,6 @@ class Dashboard extends ConsumerStatefulWidget {
 }
 
 class _DashboardState extends ConsumerState<Dashboard> {
-  late ConfettiController _confettiController;
   final _quickAddController = TextEditingController();
   final _searchFocusNode = FocusNode();
   String? _labelFilterId;
@@ -51,7 +48,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     WidgetsBinding.instance.addPostFrameCallback((_) => _setupNotifications());
     WidgetsBinding.instance.addPostFrameCallback((_) => _showScreenPinningDialog());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkWeeklyReview());
@@ -65,7 +61,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
   @override
   void dispose() {
     _shareSubscription?.cancel();
-    _confettiController.dispose();
     _quickAddController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -354,8 +349,10 @@ class _DashboardState extends ConsumerState<Dashboard> {
   @override
   Widget build(BuildContext context) {
     ref.listen(dashboardProvider.select((state) => state.celebrationTrigger), (previous, next) {
-      if (next > 0) {
-        _confettiController.play();
+      if (next > 0 && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task completed!'), duration: Duration(seconds: 2)),
+        );
       }
     });
 
@@ -751,22 +748,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
             ),
           ),
           
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.pink,
-                Colors.orange,
-                Colors.purple,
-                Colors.yellow,
-              ],
-            ),
-          ),
           const _SyncSuccessOverlay(),
         ],
       ),
@@ -787,7 +768,9 @@ class _DashboardState extends ConsumerState<Dashboard> {
                           final matchesSearch = query.isEmpty ||
                               t.title.toLowerCase().contains(query) ||
                               (t.notes != null && t.notes!.toLowerCase().contains(query));
-                          return matchesSearch && _matchesSmartFilter(t, smartFilter);
+                          bool matchesSmart = true;
+                          if (smartFilter == SmartFilter.overdue) matchesSmart = t.deadline != null && t.deadline!.isBefore(DateTime.now());
+                          return matchesSearch && matchesSmart;
                         })
                         .map((t) => t.id)
                         .toList();
@@ -833,9 +816,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
           : null,
     );
   }
-
-  bool _matchesSmartFilter(Task task, SmartFilter filter) =>
-      matchesSmartFilter(task, filter);
 
   static IconData? _sortIcon(SortBy sortBy) => switch (sortBy) {
         SortBy.order => null,

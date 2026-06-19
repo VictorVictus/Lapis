@@ -1,4 +1,3 @@
-import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:to_do_app/models/subclasses/recurrent_configuration.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -87,9 +86,9 @@ class Task {
       id: id,
       userId: map['userId'] as String? ?? '',
       title: map['title'] as String? ?? '',
-      status: TaskStatus.values[safeIndex(TaskStatus.values, map['status'], 0)],
-      type: TaskType.values[safeIndex(TaskType.values, map['type'], 0)],
-      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      status: TaskStatus.values[(map['status'] is int && (map['status'] as int) >= 0 && (map['status'] as int) < TaskStatus.values.length) ? map['status'] as int : 0],
+      type: TaskType.values[(map['type'] is int && (map['type'] as int) >= 0 && (map['type'] as int) < TaskType.values.length) ? map['type'] as int : 0],
+      priority: TaskPriority.values[(map['priority'] is int && (map['priority'] as int) >= 0 && (map['priority'] as int) < TaskPriority.values.length) ? map['priority'] as int : 0],
       category: safeCategory(map['category']),
       scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
       deadline: (map['deadline'] as Timestamp?)?.toDate(),

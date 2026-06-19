@@ -1,4 +1,3 @@
-import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -35,7 +34,7 @@ class SubTask {
       title: map['title'] as String? ?? '',
       isDone: map['isDone'] as bool? ?? false,
       order: (map['order'] as num?)?.toInt() ?? 0,
-      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      priority: TaskPriority.values[(map['priority'] is int && (map['priority'] as int) >= 0 && (map['priority'] as int) < TaskPriority.values.length) ? map['priority'] as int : 0],
       scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
       deadline: (map['deadline'] as Timestamp?)?.toDate(),
       notes: map['notes'] as String?,

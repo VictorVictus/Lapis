@@ -4,11 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:to_do_app/core/legal_config.dart';
 import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/services/auth_service.dart';
-import 'package:to_do_app/services/password_strength.dart';
 import 'package:to_do_app/widgets/legal_consent_section.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 
@@ -131,9 +128,6 @@ class _AuthState extends ConsumerState<Auth> {
 
   @override
   Widget build(BuildContext context) {
-    final passwordStrength = !_isLogin
-        ? PasswordStrength.getStrengthOfPassword(_passwordController.text)
-        : null;
     final gradientColors = AppTheme.gradientColors(context);
 
     return Scaffold(
@@ -203,7 +197,7 @@ class _AuthState extends ConsumerState<Auth> {
                                 Text(
                                   _isLogin
                                       ? 'Sign in to keep going'
-                                      : 'Start your journey with ${LegalConfig.appName}',
+                                      : 'Start your journey with Lapis',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.7),
@@ -258,28 +252,6 @@ class _AuthState extends ConsumerState<Auth> {
                                   ),
                                 ),
 
-                                if (!_isLogin && passwordStrength != null) ...[
-                                  const SizedBox(height: 8),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'Strength: $passwordStrength',
-                                      style: TextStyle(
-                                        color: _strengthColor(passwordStrength),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'At least ${PasswordStrength.minLength} characters with upper, lower case, and a number.',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
 
                                 if (!_isLogin) ...[
                                   const SizedBox(height: 16),
@@ -293,7 +265,8 @@ class _AuthState extends ConsumerState<Auth> {
 
                                 const SizedBox(height: 8),
                                 Text(
-                                  LegalConfig.dataCollectionSummary,
+                                  'We store your email, username, and tasks to provide the service. '
+                                  'Data is processed via Firebase (Google).',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.55),
@@ -369,8 +342,7 @@ class _AuthState extends ConsumerState<Auth> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     _buildSocialButton(
-                                      icon: FontAwesomeIcons.google,
-                                      label: 'Google',
+                                    label: 'Google',
                                       onTap: () => _handleSocialAuth(
                                         ref.read(authServiceProvider).signInWithGoogle,
                                       ),
@@ -378,7 +350,6 @@ class _AuthState extends ConsumerState<Auth> {
                                     if (!kIsWeb) ...[
                                       const SizedBox(width: 12),
                                       _buildSocialButton(
-                                        icon: FontAwesomeIcons.apple,
                                         label: 'Apple',
                                         onTap: () => _handleSocialAuth(
                                           ref.read(authServiceProvider).signInWithApple,
@@ -387,7 +358,6 @@ class _AuthState extends ConsumerState<Auth> {
                                     ],
                                     const SizedBox(width: 12),
                                     _buildSocialButton(
-                                      icon: FontAwesomeIcons.github,
                                       label: 'GitHub',
                                       onTap: () => _handleSocialAuth(
                                         ref.read(authServiceProvider).signInWithGitHub,
@@ -456,14 +426,6 @@ class _AuthState extends ConsumerState<Auth> {
 
   static void _noop(bool? _) {}
 
-  Color _strengthColor(String strength) {
-    return switch (strength) {
-      'Strong' => Colors.greenAccent,
-      'Medium' => Colors.amberAccent,
-      _ => Colors.redAccent,
-    };
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String placeholder,
@@ -511,7 +473,6 @@ class _AuthState extends ConsumerState<Auth> {
   }
 
   Widget _buildSocialButton({
-    required FaIconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
@@ -528,7 +489,7 @@ class _AuthState extends ConsumerState<Auth> {
             width: 56,
             height: 56,
             child: Center(
-              child: FaIcon(icon, color: Colors.white, size: 22),
+              child: Text(label[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
             ),
           ),
         ),

@@ -2,11 +2,18 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:to_do_app/services/category_service.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
+
+const _colorOptions = [
+  Colors.red, Colors.pink, Colors.purple, Colors.deepPurple,
+  Colors.indigo, Colors.blue, Colors.lightBlue, Colors.cyan,
+  Colors.teal, Colors.green, Colors.lightGreen, Colors.lime,
+  Colors.yellow, Colors.amber, Colors.orange, Colors.deepOrange,
+  Colors.brown, Colors.grey, Colors.blueGrey,
+];
 
 class CategoryDialogs {
   static Future<void> showCreateCategoryDialog(BuildContext context, WidgetRef ref) async {
@@ -37,28 +44,20 @@ class CategoryDialogs {
                     padding: const EdgeInsets.all(12),
                   ),
                   const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () async {
-                      final Color? pickedColor = await showColorPickerDialog(context, selectedColor);
-                      if (pickedColor != null) {
-                        setDialogState(() {
-                          selectedColor = pickedColor;
-                        });
-                      }
-                    },
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: selectedColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Select Color',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _colorOptions.map((c) => GestureDetector(
+                      onTap: () => setDialogState(() => selectedColor = c),
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: selectedColor == c ? Border.all(color: Colors.white, width: 3) : null,
                         ),
                       ),
-                    ),
+                    )).toList(),
                   ),
                 ],
               ),
@@ -101,44 +100,5 @@ class CategoryDialogs {
     );
 
     nameController.dispose();
-  }
-
-  static Future<Color?> showColorPickerDialog(BuildContext context, Color currentColor) async {
-    Color pickerColor = currentColor;
-
-    return showDialog<Color>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: const Text('Colors'),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: pickerColor,
-              onColorChanged: (Color color) {
-                pickerColor = color;
-              },
-              pickerAreaHeightPercent: 0.8,
-              displayThumbColor: true,
-              enableAlpha: false,
-              labelTypes: const [ColorLabelType.hex],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel', style: TextStyle(color: CupertinoColors.destructiveRed)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, pickerColor),
-              child: Text('Select', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
-            ),
-          ],
-        );
-      },
-    );
   }
 }

@@ -11,7 +11,6 @@ import 'package:to_do_app/providers/unified_task_provider.dart';
 import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/widgets/empty_state_widget.dart';
-import 'package:to_do_app/core/smart_filter_utils.dart';
 import 'package:to_do_app/providers/sections_provider.dart';
 
 class TaskListView extends ConsumerStatefulWidget {
@@ -32,6 +31,11 @@ class TaskListView extends ConsumerStatefulWidget {
   ConsumerState<TaskListView> createState() => _TaskListViewState();
 }
 
+class _NoScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) => child;
+}
+
 class _TaskListViewState extends ConsumerState<TaskListView> {
   final ScrollController _scrollController = ScrollController();
   Timer? _reorderDebounce;
@@ -43,8 +47,20 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
     super.dispose();
   }
 
-  bool _matchesSmartFilter(Task task, SmartFilter filter) =>
-      matchesSmartFilter(task, filter);
+  bool _matches(Task task, SmartFilter filter) {
+    final now = DateTime.now();
+    switch (filter) {
+      case SmartFilter.all: return true;
+      case SmartFilter.today: return task.scheduledAt != null && task.scheduledAt!.day == now.day && task.scheduledAt!.month == now.month && task.scheduledAt!.year == now.year;
+      case SmartFilter.thisWeek: if (task.scheduledAt == null) return false; final ws = now.subtract(Duration(days: now.weekday - 1)); return task.scheduledAt!.isAfter(ws.subtract(const Duration(hours: 1)));
+      case SmartFilter.overdue: return task.deadline != null && task.deadline!.isBefore(now);
+      case SmartFilter.highPriority: return task.priority == TaskPriority.high;
+      case SmartFilter.hasDeadline: return task.deadline != null;
+      case SmartFilter.noDeadline: return task.deadline == null;
+      case SmartFilter.thisMonth: if (task.scheduledAt == null) return false; return task.scheduledAt!.month == now.month && task.scheduledAt!.year == now.year;
+      case SmartFilter.recurring: return task.type == TaskType.recurrent;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +78,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           final matchesSearch = searchQuery.isEmpty ||
               task.title.toLowerCase().contains(query) ||
               (task.notes != null && task.notes!.toLowerCase().contains(query));
-          final matchesSmart = _matchesSmartFilter(task, smartFilter);
+          final matchesSmart = _matches(task, smartFilter);
           final matchesLabel = widget.labelFilterId == null || task.labelIds.contains(widget.labelFilterId);
           return matchesSearch && matchesSmart && matchesLabel;
         }).toList()
@@ -96,12 +112,15 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           content = _buildGroupedList(tasks, groupBy);
         }
 
-        return content;
+        return ScrollConfiguration(behavior: _NoScrollBehavior(), child: content);
       },
-      loading: () => ListView.builder(
-        itemCount: 4,
-        physics: const NeverScrollableScrollPhysics(),
-        itemBuilder: (context, index) => const SkeletonTaskItem(),
+      loading: () => ScrollConfiguration(
+        behavior: _NoScrollBehavior(),
+        child: ListView.builder(
+          itemCount: 4,
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: (context, index) => const SkeletonTaskItem(),
+        ),
       ),
       error: (e, _) => Center(
         child: Column(
@@ -159,6 +178,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
 
     if (canReorder) {
       return ReorderableListView.builder(
+        buildDefaultDragHandles: false,
         itemCount: tasks.length,
         onReorder: (oldIndex, newIndex) => _onReorder(tasks, oldIndex, newIndex),
         proxyDecorator: (child, index, animation) => AnimatedBuilder(
@@ -172,7 +192,12 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
           child: child,
         ),
         itemBuilder: (context, index) {
-          return _buildTaskItem(tasks[index]);
+          final task = tasks[index];
+          return ReorderableDragStartListener(
+            key: ValueKey(task.id),
+            index: index,
+            child: _buildTaskItem(task),
+          );
         },
       );
     }

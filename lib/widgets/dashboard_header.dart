@@ -5,7 +5,6 @@ import 'package:to_do_app/models/user.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:to_do_app/services/auth_service.dart';
 import 'package:to_do_app/widgets/legal_consent_section.dart';
-import 'package:to_do_app/core/legal_config.dart';
 import 'package:to_do_app/core/session_cleanup.dart';
 import 'package:to_do_app/models/auth_result.dart';
 import 'package:to_do_app/providers/theme_provider.dart';
@@ -140,7 +139,7 @@ class DashboardHeader extends ConsumerWidget {
               leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('Delete account'),
               subtitle: Text(
-                'Permanently removes your ${LegalConfig.appName} account and profile.',
+                'Permanently removes your Lapis account and profile.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               onTap: () => Navigator.pop(context, 'delete'),
@@ -150,7 +149,7 @@ class DashboardHeader extends ConsumerWidget {
               title: const Text('Privacy Policy'),
               onTap: () {
                 Navigator.pop(context);
-                LegalConsentSection.openUrl(LegalConfig.privacyPolicyUrl);
+                LegalConsentSection.openUrl('https://lapis-todo.app/privacy-policy');
               },
             ),
             ListTile(

@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:to_do_app/core/legal_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Play Store–compliant terms/privacy links and optional acceptance checkbox.
@@ -43,14 +42,14 @@ class LegalConsentSection extends StatelessWidget {
             text: 'Terms of Service',
             style: linkStyle,
             recognizer: TapGestureRecognizer()
-              ..onTap = () => openUrl(LegalConfig.termsOfServiceUrl),
+              ..onTap = () => openUrl('https://lapis-todo.app/terms-of-service'),
           ),
           const TextSpan(text: ' and '),
           TextSpan(
             text: 'Privacy Policy',
             style: linkStyle,
             recognizer: TapGestureRecognizer()
-              ..onTap = () => openUrl(LegalConfig.privacyPolicyUrl),
+              ..onTap = () => openUrl('https://lapis-todo.app/privacy-policy'),
           ),
           if (!showCheckbox) const TextSpan(text: '.'),
         ],

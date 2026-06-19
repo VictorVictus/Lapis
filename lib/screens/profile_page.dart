@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:to_do_app/models/user.dart';
 import 'package:to_do_app/providers/accent_color_provider.dart';
-import 'package:to_do_app/providers/demo_statistics_provider.dart';
 import 'package:to_do_app/providers/statistics_provider.dart';
-import 'package:to_do_app/services/demo_statistics_service.dart';
 import 'package:to_do_app/services/statistics_service.dart';
 import 'package:to_do_app/services/focus_session_service.dart';
 import 'package:to_do_app/theme/app_theme.dart';
@@ -140,53 +137,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  void _cycleDemoData(WidgetRef ref) {
-    if (!kDebugMode) return;
-    final isDemo = ref.read(useDemoStatsProvider);
-    if (!isDemo) {
-      ref.read(useDemoStatsProvider.notifier).enable();
-      ref.read(demoPresetProvider.notifier).set(DemoPreset.normal);
-      ref.invalidate(statisticsProvider(widget.user.uid));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Demo ON — tap again to cycle presets'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } else {
-      final current = ref.read(demoPresetProvider);
-      final next = DemoPreset.values[(current.index + 1) % DemoPreset.values.length];
-      if (next == DemoPreset.normal) {
-        ref.read(useDemoStatsProvider.notifier).disable();
-        ref.invalidate(statisticsProvider(widget.user.uid));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Demo OFF'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      } else {
-        ref.read(demoPresetProvider.notifier).set(next);
-        ref.invalidate(statisticsProvider(widget.user.uid));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Preset: ${next.name}'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-    }
-  }
-
   Widget _buildUserHeader() {
     final color = Theme.of(context).colorScheme.primary;
     return _buildFrostedCard(
       child: Row(
         children: [
-          GestureDetector(
-            onTap: kDebugMode ? () => _cycleDemoData(ref) : null,
-            onLongPress: kDebugMode ? () => _cycleDemoData(ref) : null,
-            child: Container(
+          Container(
               width: 64,
               height: 64,
               decoration: BoxDecoration(
@@ -212,7 +168,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
             ),
-          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -234,33 +189,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     fontSize: 14,
                   ),
                 ),
-                if (kDebugMode) ...[
-                  const SizedBox(height: 6),
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final isDemo = ref.watch(useDemoStatsProvider);
-                      if (!isDemo) return const SizedBox.shrink();
-                      final preset = ref.watch(demoPresetProvider);
-                      final demoAccent = ref.watch(accentColorProvider);
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: demoAccent.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: demoAccent.withValues(alpha: 0.5)),
-                        ),
-                        child: Text(
-                          'DEMO · ${preset.name}',
-                          style: TextStyle(
-                            color: demoAccent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+
               ],
             ),
           ),

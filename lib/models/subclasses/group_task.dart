@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:to_do_app/core/safe_index.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/subclasses/sub_task.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
@@ -48,8 +47,8 @@ class GroupTask {
       id: id,
       groupId: groupId,
       title: map['title'] as String? ?? '',
-      status: TaskStatus.values[safeIndex(TaskStatus.values, map['status'], 0)],
-      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      status: TaskStatus.values[(map['status'] is int && (map['status'] as int) >= 0 && (map['status'] as int) < TaskStatus.values.length) ? map['status'] as int : 0],
+      priority: TaskPriority.values[(map['priority'] is int && (map['priority'] as int) >= 0 && (map['priority'] as int) < TaskPriority.values.length) ? map['priority'] as int : 0],
       category: map['category'] is Map<String, dynamic>
           ? TaskCategory.fromMap(map['category'] as Map<String, dynamic>)
           : TaskCategory(id: 'uncategorized', name: 'General', color: 0xFF9E9E9E),
@@ -181,7 +180,7 @@ class GroupSubTask {
       isDone: map['isDone'] as bool? ?? false,
       doneBy: map['doneBy'] as String?,
       order: (map['order'] as num?)?.toInt() ?? 0,
-      priority: TaskPriority.values[safeIndex(TaskPriority.values, map['priority'], 0)],
+      priority: TaskPriority.values[(map['priority'] is int && (map['priority'] as int) >= 0 && (map['priority'] as int) < TaskPriority.values.length) ? map['priority'] as int : 0],
       scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
       deadline: (map['deadline'] as Timestamp?)?.toDate(),
       notes: map['notes'] as String?,
