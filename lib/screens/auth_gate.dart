@@ -33,6 +33,17 @@ class _AuthGateState extends ConsumerState<AuthGate> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
 
+    ref.listen(authStateProvider, (prev, next) {
+      if (prev?.hasValue == true && next.hasValue) {
+        final prevUser = prev!.value;
+        final nextUser = next.value;
+        if (prevUser == null && nextUser != null) {
+          setState(() => _onboardingDone = null);
+          _checkOnboarding();
+        }
+      }
+    });
+
     return authState.when(
       loading: () => const _AuthSplash(),
       error: (error, _) => _AuthError(message: error.toString()),
