@@ -81,6 +81,34 @@ lib/
 ├── theme/             # Light & dark theme definitions
 └── widgets/           # Reusable UI components
 ```
+## Branch Workflow
+
+```
+main       ─── released to store (protected, CI + Codemagic on push)
+develop    ─── integration branch (protected, CI on push/PR)
+feat/*     ─── new features — branch from develop, PR to develop
+fix/*      ─── bug fixes — branch from develop, PR to develop
+release/*  ─── pre-release stabilization — branch from develop, PR to main + tag
+hotfix/*   ─── urgent production fix — branch from main, PR to main + backport to develop
+```
+
+| Step | Command |
+|------|---------|
+| Start work | `git checkout develop && git pull && git checkout -b feat/my-thing` |
+| Push | `git push -u origin feat/my-thing` |
+| PR | Open PR → `feat/my-thing` into `develop` |
+| Release | `git checkout develop && git checkout -b release/1.2.0` → stabilize → PR to `main` |
+| Hotfix | `git checkout main && git checkout -b hotfix/urgent-fix` → PR to `main` + `develop` |
+| Tag | `git tag v1.2.0 && git push origin v1.2.0` (after release PR merges to main) |
+
+### Branch Protection (GitHub UI → Settings → Branches → Add rule)
+
+| Rule | `main` | `develop` |
+|------|--------|-----------|
+| Require PR before merge | ✅ | ✅ |
+| Require CI (analyze, test) | ✅ | ✅ |
+| Require up-to-date | ✅ | ✅ |
+| No direct pushes | ✅ | ✅ |
 
 ## License
 

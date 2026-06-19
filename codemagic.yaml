@@ -22,6 +22,8 @@ workflows:
       branch_patterns:
         - pattern: main
           include: true
+        - pattern: 'release/*'
+          include: true
         - pattern: '*'
           include: false
     environment:
