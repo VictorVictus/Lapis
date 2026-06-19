@@ -23,11 +23,12 @@ A modern, cross-platform task management app built with Flutter and Firebase. La
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+|-------|-----------|
 | Frontend | Flutter (Dart 3.x) |
 | State | Riverpod |
 | Backend | Firebase (Auth, Firestore, Cloud Functions, FCM, App Check, Crashlytics) |
 | Storage | Firebase Storage (profile pictures) |
+| CI | GitHub Actions (analyze + test) + Codemagic (Android builds) |
 
 ## Getting Started
 
@@ -40,8 +41,8 @@ A modern, cross-platform task management app built with Flutter and Firebase. La
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-org>/lapis.git
-cd lapis
+git clone https://github.com/VictorVictus/Lapis.git
+cd Lapis
 
 # Install dependencies
 flutter pub get
@@ -73,7 +74,7 @@ firebase deploy --only functions
 
 ```
 lib/
-├── core/              # Bootstrap, assets, legal, shared utilities
+├── core/              # Bootstrap, shared utilities
 ├── models/            # Data models (Task, User, FocusSession, etc.)
 ├── providers/         # Riverpod state providers
 ├── screens/           # Auth, Dashboard, Schedule, Focus, Stats, Archive
@@ -81,35 +82,94 @@ lib/
 ├── theme/             # Light & dark theme definitions
 └── widgets/           # Reusable UI components
 ```
+
 ## Branch Workflow
 
 ```
-main       ─── released to store (protected, CI + Codemagic on push)
-develop    ─── integration branch (protected, CI on push/PR)
-feat/*     ─── new features — branch from develop, PR to develop
-fix/*      ─── bug fixes — branch from develop, PR to develop
-release/*  ─── pre-release stabilization — branch from develop, PR to main + tag
-hotfix/*   ─── urgent production fix — branch from main, PR to main + backport to develop
+                  feature
+                 ──── feat/foo ──┐
+                  ──── fix/bar ──┤          release              production
+                                  ├──→ develop ──→ release/1.0 ──→ main ──→ tag v1.0
+                  urgent           │              ↑
+                  ──── hotfix/baz ─┘              └── hotfix cherry-pick
 ```
+
+| Branch | Purpose | Base | Lifespan |
+|--------|---------|------|----------|
+| `main` | Released code (Play Store) | — | Permanent, protected |
+| `develop` | Integration — features merge here first | `main` | Permanent, protected |
+| `feat/*` | New features | `develop` | Deleted after PR |
+| `fix/*` | Bug fixes | `develop` | Deleted after PR |
+| `release/*` | Pre-release stabilization | `develop` | Deleted after merge + tag |
+| `hotfix/*` | Urgent production fix | `main` | Deleted after PR + backport |
+
+### Cheat Sheet
 
 | Step | Command |
 |------|---------|
-| Start work | `git checkout develop && git pull && git checkout -b feat/my-thing` |
-| Push | `git push -u origin feat/my-thing` |
-| PR | Open PR → `feat/my-thing` into `develop` |
-| Release | `git checkout develop && git checkout -b release/1.2.0` → stabilize → PR to `main` |
-| Hotfix | `git checkout main && git checkout -b hotfix/urgent-fix` → PR to `main` + `develop` |
-| Tag | `git tag v1.2.0 && git push origin v1.2.0` (after release PR merges to main) |
+| **Start work** | `git checkout develop && git pull && git checkout -b feat/my-thing` |
+| **Push branch** | `git push -u origin feat/my-thing` |
+| **Open PR** | GitHub UI → `feat/my-thing` into `develop` |
+| **Merge PR** | GitHub UI (squash merge) |
+| **Sync develop** | `git checkout develop && git pull` |
+| **Start release** | `git checkout develop && git checkout -b release/1.2.0` |
+| **Finish release** | PR `release/1.2.0` → `main` → merge → tag |
+| **Tag release** | `git tag v1.2.0 && git push origin v1.2.0` |
+| **Hotfix** | `git checkout main && git checkout -b hotfix/urgent` → PR to `main` + PR to `develop` |
 
-### Branch Protection (GitHub UI → Settings → Branches → Add rule)
+### CI Triggers
 
-| Rule | `main` | `develop` |
-|------|--------|-----------|
-| Require PR before merge | ✅ | ✅ |
-| Require CI (analyze, test) | ✅ | ✅ |
-| Require up-to-date | ✅ | ✅ |
-| No direct pushes | ✅ | ✅ |
+| Event | Branches | Jobs |
+|-------|----------|------|
+| Push / PR | `main`, `develop`, `feat/*`, `fix/*`, `release/*` | `analyze`, `test` (GitHub Actions) |
+| Push | `main`, `release/*` | `android-release` build (Codemagic) |
 
-## License
+### Rulesets (GitHub Settings → Branches → Add rule)
 
-This project is a work in progress.
+Configured on **both** `main` and `develop`:
+
+```
+┌──────────────────────────────────────────────┬──────────┬──────────┐
+│ Rule                                         │ main     │ develop  │
+├──────────────────────────────────────────────┼──────────┼──────────┤
+│ Require a pull request before merging         │ ✅       │ ✅       │
+│ Require status checks (analyze, test)         │ ✅       │ ✅       │
+│ Require branches to be up-to-date             │ ✅       │ ✅       │
+│ Do not allow bypassing (admins exempt)        │ ❌       │ ❌       │
+└──────────────────────────────────────────────┴──────────┴──────────┘
+```
+
+> **"Do not allow bypassing" is unchecked** — admins (you) can merge directly when needed. Non-admin contributors follow all rules.
+
+## Contributing
+
+1. Pick an issue or create one
+2. Branch from `develop`: `git checkout -b feat/my-thing`
+3. Make changes, commit with conventional messages (`feat:`, `fix:`, `chore:`)
+4. Push and open a PR into `develop`
+5. Wait for CI (analyze + test) to pass
+6. Merge via GitHub UI (squash)
+
+### PR Checklist
+
+- [ ] `flutter analyze lib` passes
+- [ ] `flutter test` passes
+- [ ] No new unused imports or dead code
+- [ ] No secrets, keys, or configs committed
+
+### Commit Convention
+
+```
+type(scope): description
+
+feat:     new feature
+fix:      bug fix
+chore:    refactor, deps, tooling, CI
+docs:     documentation
+BREAKING: incompatible change
+
+Examples:
+  feat(ui): add dark mode toggle
+  fix(api): handle null deadline on task create
+  chore(deps): remove flutter_colorpicker
+```
