@@ -11,9 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+      - uses: cirruslabs/flutter-action@v2
       - run: flutter pub get
       - run: flutter analyze lib
 
@@ -21,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+      - uses: cirruslabs/flutter-action@v2
       - run: flutter pub get
       - run: flutter test
