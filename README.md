@@ -142,18 +142,14 @@ gitGraph
 
 Configured on **both** `main` and `develop`:
 
-```
-┌──────────────────────────────────────────────┬──────────┬──────────┐
-│ Rule                                         │ main     │ develop  │
-├──────────────────────────────────────────────┼──────────┼──────────┤
-│ Require a pull request before merging         │ ✅       │ ✅       │
-│ Require status checks (analyze, test)         │ ✅       │ ✅       │
-│ Require branches to be up-to-date             │ ✅       │ ✅       │
-│ Do not allow bypassing (admins exempt)        │ ❌       │ ❌       │
-└──────────────────────────────────────────────┴──────────┴──────────┘
-```
+| Rule | `main` | `develop` |
+|------|--------|-----------|
+| Require a pull request before merging | ✅ | ✅ |
+| Require status checks (analyze, test) | ✅ | ✅ |
+| Require branches to be up-to-date | ✅ | ✅ |
+| Do not allow bypassing (admins exempt) | ❌ | ❌ |
 
-> **"Do not allow bypassing" is unchecked** — admins (you) can merge directly when needed. Non-admin contributors follow all rules.
+> **"Do not allow bypassing" is unchecked** — admins bypass rules when needed; non-admins must follow them.
 
 ## Contributing
 
