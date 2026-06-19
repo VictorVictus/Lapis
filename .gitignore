@@ -69,3 +69,9 @@ linux/flutter/generated_plugin_registrant.h
 
 # Test coverage
 coverage/
+
+# opencode
+.opencode/
+opencode.json
+flutter_*.log
+*.code-workspace
