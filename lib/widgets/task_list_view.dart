@@ -193,7 +193,7 @@ class _TaskListViewState extends ConsumerState<TaskListView> {
         ),
         itemBuilder: (context, index) {
           final task = tasks[index];
-          return ReorderableDragStartListener(
+          return ReorderableDelayedDragStartListener(
             key: ValueKey(task.id),
             index: index,
             child: _buildTaskItem(task),
