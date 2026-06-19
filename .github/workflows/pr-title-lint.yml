@@ -1,0 +1,26 @@
+name: pr-title-lint
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, edited, synchronize]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const pattern = /^(feat|fix|chore|docs|refactor|test|style|BREAKING)(\(.+\))?:\s.+/;
+            if (!pattern.test(title)) {
+              core.setFailed(
+                'PR title must match conventional commits:\n' +
+                '  feat(scope): description\n' +
+                '  fix(scope): description\n' +
+                '  chore(scope): description\n' +
+                '  docs: description\n' +
+                '  BREAKING: description'
+              );
+            }

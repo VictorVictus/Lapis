@@ -1,0 +1,32 @@
+ui:
+  - lib/widgets/**/*
+  - lib/theme/**/*
+
+screens:
+  - lib/screens/**/*
+
+providers:
+  - lib/providers/**/*
+
+models:
+  - lib/models/**/*
+
+backend:
+  - lib/services/**/*
+  - functions/**/*
+  - firestore.rules
+  - firestore.indexes.json
+  - storage.rules
+
+deps:
+  - pubspec.yaml
+  - pubspec.lock
+  - functions/package.json
+  - functions/package-lock.json
+
+ci:
+  - .github/**/*
+  - codemagic.yaml
+
+docs:
+  - '**/*.md'
