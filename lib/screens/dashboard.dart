@@ -52,7 +52,12 @@ class _DashboardState extends ConsumerState<Dashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _showScreenPinningDialog());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkWeeklyReview());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkSharedText());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWidgetData());
+    // Defer widget data refresh so the initial frame and Firestore listeners
+    // settle before we fetch all tasks for the home-screen widget.
+    WidgetsBinding.instance.addPostFrameCallback((_) => Future.delayed(
+      const Duration(milliseconds: 1200),
+      () { if (mounted) _refreshWidgetData(); },
+    ));
     _shareSubscription = ShareService.onShared.stream.listen((text) {
       _openAddTaskSheetWithText(text);
     });

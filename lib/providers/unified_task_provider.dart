@@ -17,22 +17,27 @@ final unifiedTasksProvider = StreamProvider.family<List<Task>, String>((ref, use
   bool personalLoaded = false;
   List<StreamSubscription> taskSubs = [];
   StreamSubscription? userDocSub;
+  Timer? emitDebounce;
 
   void emit() {
-    if (!personalLoaded) return;
-    final all = <Task>[...personalTasks];
-    for (final entry in groupTasksAsTasks.values) {
-      all.addAll(entry);
-    }
-    all.sort((a, b) {
-      final cmp = a.order.compareTo(b.order);
-      if (cmp != 0) return cmp;
-      return a.createdAt.compareTo(b.createdAt);
+    emitDebounce?.cancel();
+    emitDebounce = Timer(const Duration(milliseconds: 50), () {
+      if (!personalLoaded) return;
+      final all = <Task>[...personalTasks];
+      for (final entry in groupTasksAsTasks.values) {
+        all.addAll(entry);
+      }
+      all.sort((a, b) {
+        final cmp = a.order.compareTo(b.order);
+        if (cmp != 0) return cmp;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+      controller.add(all);
     });
-    controller.add(all);
   }
 
   ref.onDispose(() {
+    emitDebounce?.cancel();
     userDocSub?.cancel();
     for (final s in taskSubs) { s.cancel(); }
     controller.close();
