@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:to_do_app/models/task.dart';
 import 'package:to_do_app/models/subclasses/task_category.dart';
 import 'package:to_do_app/models/subclasses/label.dart';
@@ -44,14 +45,28 @@ List<VoiceParsedTask> parseVoiceCommand(
   DateTime? now,
 }) {
   final refDate = now ?? DateTime.now();
-  final parts = raw
+  // Pre-extract notes from full raw text so "and" inside notes doesn't split
+  String? preNotes;
+  var textForSplit = raw;
+  final notePattern = RegExp(
+    r'(?:note|notes|comment|description|details)[:\s]\s*(.+?)$',
+    caseSensitive: false,
+  );
+  final noteMatch = notePattern.firstMatch(raw);
+  if (noteMatch != null) {
+    preNotes = noteMatch.group(1)?.trim();
+    textForSplit = raw.replaceFirst(noteMatch.group(0)!, '').trim();
+  }
+
+  final parts = textForSplit
       .split(RegExp(r'\s+and\s+', caseSensitive: false))
       .map((s) => s.trim())
       .where((s) => s.isNotEmpty)
       .toList();
-  if (parts.isEmpty) parts.add(raw);
+  if (parts.isEmpty) parts.add(textForSplit);
+  debugPrint('[VoiceParser] Input: "$raw" → ${parts.length} part(s)');
 
-  return parts
+  final results = parts
       .map((part) => _parseSingle(part,
           categories: categories,
           labels: labels,
@@ -59,6 +74,40 @@ List<VoiceParsedTask> parseVoiceCommand(
           groups: groups,
           now: refDate))
       .toList();
+
+  // Apply pre-extracted notes to the last task
+  if (preNotes != null && results.isNotEmpty) {
+    final last = results.length - 1;
+    results[last] = VoiceParsedTask(
+      title: results[last].title,
+      scheduledAt: results[last].scheduledAt,
+      deadline: results[last].deadline,
+      priority: results[last].priority,
+      category: results[last].category,
+      labels: results[last].labels,
+      recurrentConfig: results[last].recurrentConfig,
+      pinned: results[last].pinned,
+      notes: preNotes,
+      section: results[last].section,
+      groupId: results[last].groupId,
+      groupName: results[last].groupName,
+    );
+    debugPrint('[VoiceParser] Notes applied to result[$last]: "$preNotes"');
+  }
+
+  for (var i = 0; i < results.length; i++) {
+    final r = results[i];
+    debugPrint('[VoiceParser] Final[$i]: title="${r.title}" prio=${r.priority.name} '
+        'sched=${r.scheduledAt?.toIso8601String() ?? "null"} '
+        'deadline=${r.deadline?.toIso8601String() ?? "null"} '
+        'recur=${r.recurrentConfig?.frequency.name ?? "null"} '
+        'cat=${r.category?.name ?? "null"} '
+        'labels=[${r.labels.map((l) => l.name).join(",")}] '
+        'pinned=${r.pinned} '
+        'notes="${r.notes ?? ""}"');
+  }
+
+  return results;
 }
 
 class _ParseCtx {
@@ -88,21 +137,26 @@ VoiceParsedTask _parseSingle(
 }) {
   final ctx = _ParseCtx(raw.trim());
   _stripNoise(ctx);
-  _extractRecurrence(ctx);
   _extractDeadline(ctx, now);
+  debugPrint('[VoiceParser.Trace] after deadline: "${ctx.text}" pinned=${ctx.pinned}');
+  _extractRecurrence(ctx);
+  debugPrint('[VoiceParser.Trace] after recur: "${ctx.text}" pinned=${ctx.pinned}');
   _extractDates(ctx, now);
-  _extractTime(ctx, now);
+  debugPrint('[VoiceParser.Trace] after dates: "${ctx.text}" pinned=${ctx.pinned}');
   _extractPinned(ctx);
+  debugPrint('[VoiceParser.Trace] after pinned: "${ctx.text}" pinned=${ctx.pinned}');
   _extractCategory(ctx, categories);
   _extractLabels(ctx, labels);
   _extractGroup(ctx, groups);
   _extractSection(ctx, sections);
   _extractPriority(ctx);
+  debugPrint('[VoiceParser.Trace] after priority: "${ctx.text}" pinned=${ctx.pinned}');
+  _extractTime(ctx, now);
   _extractNotes(ctx);
 
   final title = ctx.text.trim();
-  return VoiceParsedTask(
-    title: title.isEmpty ? raw.trim() : title,
+  final result = VoiceParsedTask(
+    title: title.isEmpty ? raw.trim() : _toTitleCase(title),
     scheduledAt: ctx.scheduledAt,
     deadline: ctx.deadline,
     priority: ctx.priority ?? TaskPriority.none,
@@ -115,6 +169,26 @@ VoiceParsedTask _parseSingle(
     groupId: ctx.groupId,
     groupName: ctx.groupName,
   );
+  debugPrint('[VoiceParser] raw="$raw" → title="${result.title}" '
+      'prio=${result.priority.name} '
+      'sched=${result.scheduledAt?.toIso8601String() ?? "null"} '
+      'deadline=${result.deadline?.toIso8601String() ?? "null"} '
+      'recur=${result.recurrentConfig?.frequency.name ?? "null"} '
+      'cat=${result.category?.name ?? "null"} '
+      'labels=[${result.labels.map((l) => l.name).join(",")}] '
+      'pinned=${result.pinned} '
+      'notes="${result.notes ?? ""}" '
+      'section=${result.section ?? "null"} '
+      'group=${result.groupId ?? result.groupName ?? "null"}');
+  return result;
+}
+
+String _toTitleCase(String text) {
+  if (text.isEmpty) return text;
+  return text.split(' ').map((word) {
+    if (word.isEmpty) return word;
+    return word[0].toUpperCase() + word.substring(1);
+  }).join(' ');
 }
 
 void _stripNoise(_ParseCtx ctx) {
@@ -239,14 +313,21 @@ void _extractRecurrence(_ParseCtx ctx) {
     }
   }
 
-  // Standalone weekday = weekly on that day (only if no other date in text)
+  // Standalone weekday = weekly on that day (only if no other date/time in text)
   if (ctx.recurrent == null) {
-    for (final entry in _weekdayNames.entries) {
-      final pattern = RegExp(r'\b' + entry.key + r'(?:s)?\b', caseSensitive: false);
-      final match = pattern.firstMatch(ctx.text);
-      if (match != null) {
-        final hasDate = RegExp(r'\b(today|tomorrow|next|this)\b', caseSensitive: false).hasMatch(ctx.text);
-        if (!hasDate) {
+    final hasDate = RegExp(
+      r'\b(today|tomorrow|next|this)\b',
+      caseSensitive: false,
+    ).hasMatch(ctx.text);
+    final hasTime = RegExp(
+      r'(?:at|@)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?\b',
+      caseSensitive: false,
+    ).hasMatch(ctx.text);
+    if (!hasDate && !hasTime) {
+      for (final entry in _weekdayNames.entries) {
+        final pattern = RegExp(r'\b' + entry.key + r'(?:s)?\b', caseSensitive: false);
+        final match = pattern.firstMatch(ctx.text);
+        if (match != null) {
           ctx.recurrent = RecurrentConfig(frequency: RecurrentFrequency.weekly, weekdays: [entry.value]);
           ctx.text = ctx.text.replaceFirst(match.group(0)!, '').trim();
           return;
@@ -262,7 +343,7 @@ void _extractDeadline(_ParseCtx ctx, DateTime now) {
   final deadlineRegex = RegExp(
     r'(?:by\s+|due\s+|before\s+|deadline\s+|finish by\s+|done by\s+|'
     r'complete by\s+|needed by\s+|need by\s+|must be done by\s+)'
-    r'(.+?)(?=\s+(?:tag|label|for|in|and|note|section|group|priority|p[1-3]|urgent|high|medium|low)\b|$)',
+    r'(.+?)(?=\s+(?:tag|label|for|in|and|note|section|group|priority|p[1-3]|urgent|high|medium|low|pin|pinned|star|starred|sticky)\b|$)',
     caseSensitive: false,
   );
   final match = deadlineRegex.firstMatch(ctx.text);
@@ -359,12 +440,38 @@ void _extractDeadline(_ParseCtx ctx, DateTime now) {
   }
 
   // Time patterns (HH:MM am/pm, H am/pm)
+  DateTime? matchedTime;
+  String? matchedTimeStr;
+
+  // Compact pattern: "930am", "230pm" (3-4 digits + optional am/pm)
+  final compactTimePattern = RegExp(
+    r'(?:at\s+|@\s+)?(\d{1,2})(\d{2})\s*(am|pm)?\b',
+    caseSensitive: false,
+  );
+  final compactMatch = compactTimePattern.firstMatch(working);
+  if (compactMatch != null &&
+      (forDeadline ||
+          RegExp(r'\b(?:at|@|by|due|before)\b', caseSensitive: false)
+              .hasMatch(compactMatch.group(0)!))) {
+    int hour = int.parse(compactMatch.group(1)!);
+    final minute = int.parse(compactMatch.group(2)!);
+    final ampm = compactMatch.group(3);
+    if (ampm != null) {
+      final isPm = ampm.toLowerCase() == 'pm';
+      if (isPm && hour != 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+    }
+    matchedTime = DateTime(date.year, date.month, date.day, hour, minute);
+    matchedTimeStr = compactMatch.group(0)!;
+  }
+
+  // Standard pattern: "9:30am", "9 am", "9am"
   final timePattern = RegExp(
     r'(?:at\s+|@\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
     caseSensitive: false,
   );
   final timeMatch = timePattern.firstMatch(working);
-  if (timeMatch != null &&
+  if (timeMatch != null && matchedTimeStr == null &&
       (forDeadline ||
           RegExp(r'\b(?:at|@|by|due|before)\b', caseSensitive: false)
               .hasMatch(timeMatch.group(0)!))) {
@@ -376,8 +483,13 @@ void _extractDeadline(_ParseCtx ctx, DateTime now) {
       if (isPm && hour != 12) hour += 12;
       if (!isPm && hour == 12) hour = 0;
     }
-    time = DateTime(date.year, date.month, date.day, hour, minute);
-    working = working.replaceFirst(timeMatch.group(0)!, '').trim();
+    matchedTime = DateTime(date.year, date.month, date.day, hour, minute);
+    matchedTimeStr = timeMatch.group(0)!;
+  }
+
+  if (matchedTime != null) {
+    time = matchedTime;
+    working = working.replaceFirst(matchedTimeStr!, '').trim();
   }
 
   // Named time words
@@ -439,6 +551,52 @@ void _extractDates(_ParseCtx ctx, DateTime now) {
   }
 }
 
+DateTime? _tryParseTime(String text, DateTime now) {
+  // Compact pattern: "930am", "230pm" (no colon) — requires am/pm
+  final compactPattern = RegExp(
+    r'(?:at\s+|@\s+)?(\d{1,2})(\d{2})\s*(am|pm)\b',
+    caseSensitive: false,
+  );
+  final compactMatch = compactPattern.firstMatch(text);
+  if (compactMatch != null) {
+    int hour = int.parse(compactMatch.group(1)!);
+    final minute = int.parse(compactMatch.group(2)!);
+    final ampm = compactMatch.group(3)!;
+    final isPm = ampm.toLowerCase() == 'pm';
+    if (isPm && hour != 12) hour += 12;
+    if (!isPm && hour == 12) hour = 0;
+    if (minute >= 0 && minute <= 59 && hour >= 0 && hour <= 23) {
+      return DateTime(now.year, now.month, now.day, hour, minute);
+    }
+  }
+
+  // Standard pattern: "at 3pm", "at 3:30", "3:30pm", "9 am"
+  // Requires at least one of: colon, am/pm, or "at"/"@" prefix
+  final timePattern = RegExp(
+    r'(?:at\s+|@\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
+    caseSensitive: false,
+  );
+  final match = timePattern.firstMatch(text);
+  if (match != null) {
+    final hasColon = match.group(2) != null;
+    final ampm = match.group(3);
+    final prefix = match.group(0)!;
+    final hasPrefix = prefix.toLowerCase().startsWith('at') || prefix.startsWith('@');
+    if (ampm == null && !hasColon && !hasPrefix) return null;
+
+    int hour = int.parse(match.group(1)!);
+    final minute = match.group(2) != null ? int.parse(match.group(2)!) : 0;
+    if (hour > 23 || minute > 59) return null;
+    if (ampm != null) {
+      final isPm = ampm.toLowerCase() == 'pm';
+      if (isPm && hour != 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+    }
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+  return null;
+}
+
 void _extractTime(_ParseCtx ctx, DateTime now) {
   if (ctx.scheduledAt != null) {
     // Parse time on the already-set date
@@ -450,23 +608,25 @@ void _extractTime(_ParseCtx ctx, DateTime now) {
     return;
   }
 
-  // Parse standalone time (default = today)
-  final timePattern = RegExp(
-    r'(?:at\s+|@\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
-    caseSensitive: false,
-  );
-  final match = timePattern.firstMatch(ctx.text);
-  if (match != null) {
-    int hour = int.parse(match.group(1)!);
-    final minute = match.group(2) != null ? int.parse(match.group(2)!) : 0;
-    final ampm = match.group(3);
-    if (ampm != null) {
-      final isPm = ampm.toLowerCase() == 'pm';
-      if (isPm && hour != 12) hour += 12;
-      if (!isPm && hour == 12) hour = 0;
+  final parsedTime = _tryParseTime(ctx.text, now);
+  if (parsedTime != null) {
+    // Find the matched string to remove by re-scanning
+    final compactPattern = RegExp(
+      r'(?:at\s+|@\s+)?(\d{1,2})(\d{2})\s*(am|pm)\b',
+      caseSensitive: false,
+    );
+    var matchedStr = compactPattern.firstMatch(ctx.text)?.group(0);
+    if (matchedStr == null) {
+      final standardPattern = RegExp(
+        r'(?:at\s+|@\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
+        caseSensitive: false,
+      );
+      matchedStr = standardPattern.firstMatch(ctx.text)?.group(0);
     }
-    ctx.scheduledAt = DateTime(now.year, now.month, now.day, hour, minute);
-    ctx.text = ctx.text.replaceFirst(match.group(0)!, '').trim();
+    ctx.scheduledAt = parsedTime;
+    if (matchedStr != null) {
+      ctx.text = ctx.text.replaceFirst(matchedStr, '').trim();
+    }
   }
 }
 
@@ -620,7 +780,7 @@ void _extractSection(_ParseCtx ctx, List<Section> allSections) {
 }
 
 void _extractPriority(_ParseCtx ctx) {
-  // Longer (negated) patterns first to avoid "not urgent" matching "urgent"
+  // Negated/longer patterns first to avoid partial matches
   final patterns = <(RegExp, TaskPriority?)>[
     (RegExp(r'\bnot urgent\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\bnot important\b', caseSensitive: false), TaskPriority.low),
@@ -630,6 +790,14 @@ void _extractPriority(_ParseCtx ctx) {
     (RegExp(r'\bdo it now\b', caseSensitive: false), TaskPriority.high),
     (RegExp(r'\bright away\b', caseSensitive: false), TaskPriority.high),
     (RegExp(r'\bas soon as possible\b', caseSensitive: false), TaskPriority.high),
+    (RegExp(r'\bhigh(?: priority)?\b', caseSensitive: false), TaskPriority.high),
+    (RegExp(r'\bmedium(?: priority)?\b', caseSensitive: false), TaskPriority.medium),
+    (RegExp(r'\bnormal(?: priority)?\b', caseSensitive: false), TaskPriority.medium),
+    (RegExp(r'\blow(?: priority)?\b', caseSensitive: false), TaskPriority.low),
+    (RegExp(r'\bpriority 1\b', caseSensitive: false), TaskPriority.high),
+    (RegExp(r'\bpriority 2\b', caseSensitive: false), TaskPriority.medium),
+    (RegExp(r'\bpriority 3\b', caseSensitive: false), TaskPriority.low),
+    (RegExp(r'\bp[1-3]\b', caseSensitive: false), null),
     (RegExp(r'\bwhen you get a chance\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\bwhen you can\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\btake your time\b', caseSensitive: false), TaskPriority.low),
@@ -637,38 +805,55 @@ void _extractPriority(_ParseCtx ctx) {
     (RegExp(r'\basap\b', caseSensitive: false), TaskPriority.high),
     (RegExp(r'\bcritical\b', caseSensitive: false), TaskPriority.high),
     (RegExp(r'\bimportant\b', caseSensitive: false), TaskPriority.high),
-    (RegExp(r'\bhigh(?: priority)?\b', caseSensitive: false), TaskPriority.high),
-    (RegExp(r'\bmedium(?: priority)?\b', caseSensitive: false), TaskPriority.medium),
-    (RegExp(r'\bnormal(?: priority)?\b', caseSensitive: false), TaskPriority.medium),
-    (RegExp(r'\blow(?: priority)?\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\bminor\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\btrivial\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\bwhenever\b', caseSensitive: false), TaskPriority.low),
     (RegExp(r'\banytime\b', caseSensitive: false), TaskPriority.low),
-    (RegExp(r'\bp[1-3]\b', caseSensitive: false), null),
-    (RegExp(r'\bpriority 1\b', caseSensitive: false), TaskPriority.high),
-    (RegExp(r'\bpriority 2\b', caseSensitive: false), TaskPriority.medium),
-    (RegExp(r'\bpriority 3\b', caseSensitive: false), TaskPriority.low),
   ];
+
+  int _priValue(TaskPriority p) => p.index;
+  var bestPriority = ctx.priority;
+  var bestValue = bestPriority != null ? _priValue(bestPriority) : 0;
 
   for (final (pattern, pri) in patterns) {
     final match = pattern.firstMatch(ctx.text);
     if (match != null) {
-      if (pri != null) {
-        ctx.priority = pri;
-      } else {
-        final matched = match.group(0)!;
-        if (matched.length == 2 && matched.startsWith('p')) {
-          ctx.priority = TaskPriority.values[int.parse(matched[1])];
+      final matchedText = match.group(0)!;
+      final matchedPri = pri ?? (matchedText.length == 2 && matchedText.startsWith('p')
+          ? switch (int.parse(matchedText[1])) {
+              1 => TaskPriority.high,
+              2 => TaskPriority.medium,
+              _ => TaskPriority.low,
+            }
+          : null);
+
+      if (matchedPri != null) {
+        final val = _priValue(matchedPri);
+        if (val > bestValue) {
+          bestPriority = matchedPri;
+          bestValue = val;
         }
       }
-      ctx.text = ctx.text.replaceFirst(
-        RegExp(RegExp.escape(match.group(0)!), caseSensitive: false),
-        '',
-      ).trim();
-      // ponytail: first priority match wins
-      return;
+
+      // Remove the matched text, including any orphaned "tag "/"label " prefix
+      final withPrefix = RegExp(
+        r'\b(tag|label)\s+' + RegExp.escape(matchedText) + r'\b',
+        caseSensitive: false,
+      );
+      final prefixMatch = withPrefix.firstMatch(ctx.text);
+      if (prefixMatch != null) {
+        ctx.text = ctx.text.replaceFirst(prefixMatch.group(0)!, '').trim();
+      } else {
+        ctx.text = ctx.text.replaceFirst(
+          RegExp(RegExp.escape(matchedText), caseSensitive: false),
+          '',
+        ).trim();
+      }
     }
+  }
+
+  if (bestPriority != null) {
+    ctx.priority = bestPriority;
   }
 }
 

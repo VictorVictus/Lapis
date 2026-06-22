@@ -43,7 +43,7 @@ class Dashboard extends ConsumerStatefulWidget {
   ConsumerState<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends ConsumerState<Dashboard> {
+class _DashboardState extends ConsumerState<Dashboard> with WidgetsBindingObserver {
   final _quickAddController = TextEditingController();
   final _searchFocusNode = FocusNode();
   String? _labelFilterId;
@@ -53,6 +53,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _setupNotifications());
     WidgetsBinding.instance.addPostFrameCallback((_) => _showScreenPinningDialog());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkWeeklyReview());
@@ -68,7 +69,15 @@ class _DashboardState extends ConsumerState<Dashboard> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkVoiceCommand();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _shareSubscription?.cancel();
     _voiceSubscription?.cancel();
     _quickAddController.dispose();
