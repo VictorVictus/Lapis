@@ -24,4 +24,16 @@ class VoiceService {
       return null;
     }
   }
+
+  static Future<void> showToast(String message) async {
+    try {
+      await _channel.invokeMethod('showToast', {'message': message});
+    } catch (_) {}
+  }
+
+  static Future<void> finishActivity() async {
+    try {
+      await _channel.invokeMethod('finishActivity');
+    } catch (_) {}
+  }
 }

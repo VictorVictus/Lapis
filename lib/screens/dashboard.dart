@@ -160,7 +160,7 @@ class _DashboardState extends ConsumerState<Dashboard> with WidgetsBindingObserv
           createdAt: DateTime.now(),
         );
         await ref.read(taskServiceProvider).createTask(fbTask);
-        unawaited(HapticFeedback.lightImpact());
+        unawaited(VoiceService.showToast('Created: ${fbTask.title}'));
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
