@@ -9,12 +9,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val FOCUS_CHANNEL = "app.lapis.todo/focus_mode"
     private val SHARE_CHANNEL = "app.lapis.todo/share"
+    private val VOICE_CHANNEL = "app.lapis.todo/voice"
     private var pendingSharedText: String? = null
+    private var pendingVoiceText: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         setupFocusChannel(flutterEngine)
         setupShareChannel(flutterEngine)
+        setupVoiceChannel(flutterEngine)
         handleShareIntent(intent)
     }
 
@@ -72,9 +75,27 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun setupVoiceChannel(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, VOICE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPendingCommand" -> {
+                    result.success(pendingVoiceText)
+                    pendingVoiceText = null
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
     private fun handleShareIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             pendingSharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+        if (intent?.action == Intent.ACTION_VIEW) {
+            val taskName = intent.getStringExtra("taskName")
+            if (taskName != null) {
+                pendingVoiceText = taskName
+            }
         }
     }
 }
