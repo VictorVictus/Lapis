@@ -428,6 +428,7 @@ class _AddLabelButton extends ConsumerWidget {
                   userId: userId,
                 );
                 await service.createLabel(label);
+                ref.invalidate(userLabelsProvider(userId));
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: const Text('Create'),
