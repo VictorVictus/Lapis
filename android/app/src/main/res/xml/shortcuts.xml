@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <capability android:name="actions.intent.CREATE_TASK">
+        <intent
+            android:targetPackage="app.lapis.todo"
+            android:targetClass="app.lapis.todo.MainActivity"
+            android:action="android.intent.action.VIEW">
+            <parameter
+                android:name="task.name"
+                android:key="taskName"/>
+        </intent>
+    </capability>
+</shortcuts>
