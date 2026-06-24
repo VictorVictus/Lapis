@@ -19,12 +19,16 @@ import 'package:to_do_app/providers/task_provider.dart';
 import 'package:to_do_app/providers/add_task_provider.dart';
 import 'package:to_do_app/providers/categories_provider.dart';
 import 'package:to_do_app/providers/label_providers.dart';
+import 'package:to_do_app/providers/sections_provider.dart';
+import 'package:to_do_app/providers/group_providers.dart';
 import 'package:to_do_app/services/task_service.dart';
 import 'package:to_do_app/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:to_do_app/services/group_service.dart';
 import 'package:to_do_app/services/label_service.dart';
 import 'package:to_do_app/services/share_service.dart';
+import 'package:to_do_app/services/voice_service.dart';
+import 'package:to_do_app/services/voice_task_parser.dart';
 import 'package:to_do_app/theme/app_theme.dart';
 import 'package:to_do_app/widgets/notification_permission_dialog.dart';
 import 'package:to_do_app/widgets/screen_pinning_dialog.dart';
@@ -39,33 +43,43 @@ class Dashboard extends ConsumerStatefulWidget {
   ConsumerState<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends ConsumerState<Dashboard> {
+class _DashboardState extends ConsumerState<Dashboard> with WidgetsBindingObserver {
   final _quickAddController = TextEditingController();
   final _searchFocusNode = FocusNode();
   String? _labelFilterId;
   StreamSubscription? _shareSubscription;
+  StreamSubscription? _voiceSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _setupNotifications());
     WidgetsBinding.instance.addPostFrameCallback((_) => _showScreenPinningDialog());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkWeeklyReview());
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkSharedText());
-    // Defer widget data refresh so the initial frame and Firestore listeners
-    // settle before we fetch all tasks for the home-screen widget.
-    WidgetsBinding.instance.addPostFrameCallback((_) => Future.delayed(
-      const Duration(milliseconds: 1200),
-      () { if (mounted) _refreshWidgetData(); },
-    ));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVoiceCommand());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWidgetData());
     _shareSubscription = ShareService.onShared.stream.listen((text) {
       _openAddTaskSheetWithText(text);
+    });
+    _voiceSubscription = VoiceService.onVoiceCommand.stream.listen((text) {
+      _processVoiceCommand(text);
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkVoiceCommand();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _shareSubscription?.cancel();
+    _voiceSubscription?.cancel();
     _quickAddController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -96,6 +110,69 @@ class _DashboardState extends ConsumerState<Dashboard> {
     final text = await ShareService.checkForPendingText();
     if (text != null && mounted) {
       _openAddTaskSheetWithText(text);
+    }
+  }
+
+  Future<void> _checkVoiceCommand() async {
+    final text = await VoiceService.checkForPendingCommand();
+    if (text != null && mounted) {
+      unawaited(_processVoiceCommand(text));
+    }
+  }
+
+  Future<void> _processVoiceCommand(String raw) async {
+    if (!mounted) return;
+    final user = widget.user;
+    final categories = ref.read(allCategoriesProvider);
+    if (categories.isEmpty) return;
+
+    final labelsMap = ref.read(labelsCacheProvider(user.uid));
+    final sectionsAsync = ref.read(userSectionsProvider(user.uid));
+    final groupsAsync = ref.read(groupListProvider(user.uid));
+
+    final sections = sectionsAsync.asData?.value ?? [];
+    final groups = groupsAsync.asData?.value ?? [];
+
+    final parsed = parseVoiceCommand(
+      raw,
+      categories: categories,
+      labels: labelsMap.values.toList(),
+      sections: sections,
+      groups: groups,
+    );
+
+    for (final task in parsed) {
+      try {
+        final fbTask = Task(
+          id: FirebaseFirestore.instance.collection('tasks').doc().id,
+          userId: user.uid,
+          title: task.title,
+          category: task.category ?? categories.first,
+          priority: task.priority,
+          order: DateTime.now().millisecondsSinceEpoch.toDouble(),
+          scheduledAt: task.scheduledAt,
+          deadline: task.deadline,
+          pinned: task.pinned,
+          notes: task.notes,
+          type: task.recurrentConfig != null ? TaskType.recurrent : TaskType.oneTime,
+          recurrentConfig: task.recurrentConfig,
+          labelIds: task.labels.map((l) => l.id).toList(),
+          createdAt: DateTime.now(),
+        );
+        await ref.read(taskServiceProvider).createTask(fbTask);
+        unawaited(VoiceService.showToast('Created: ${fbTask.title}'));
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create task: $e')),
+        );
+      }
+    }
+
+    if (parsed.length > 1 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Created ${parsed.length} tasks')),
+      );
     }
   }
 
